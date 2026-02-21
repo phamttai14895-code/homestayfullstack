@@ -3,6 +3,8 @@ dotenv.config();
 
 export const PORT = Number(process.env.PORT || 4000);
 export const FRONTEND = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
+/** URL backend công khai (để tạo link xác nhận email). User click link → backend xử lý → redirect về FRONTEND. */
+export const BACKEND_ORIGIN = process.env.BACKEND_ORIGIN || `http://localhost:${Number(process.env.PORT || 4000)}`;
 export const ORDER_PREFIX = (process.env.ORDER_PREFIX || "HS").toUpperCase();
 export const BOOKING_CODE_PREFIX = (process.env.BOOKING_CODE_PREFIX || "NVH").toUpperCase();
 export const sessionSecret = process.env.SESSION_SECRET || "dev_secret";

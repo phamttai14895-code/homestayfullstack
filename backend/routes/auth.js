@@ -4,7 +4,7 @@ import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import { db } from "../db.js";
 import { sendVerificationEmail } from "../services/email.js";
-import { FRONTEND } from "../config.js";
+import { FRONTEND, BACKEND_ORIGIN } from "../config.js";
 
 const router = Router();
 
@@ -49,8 +49,8 @@ router.post("/register", authLimiter, async (req, res) => {
     VALUES (?, ?, ?, 0, ?, ?)
   `).run(emailTrim, nameVal || emailTrim.split("@")[0], passwordHash, verifyToken, expiresAt);
 
-  const baseUrl = FRONTEND.replace(/\/$/, "");
-  const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}`;
+  const apiBase = BACKEND_ORIGIN.replace(/\/$/, "");
+  const verifyUrl = `${apiBase}/auth/verify-email?token=${verifyToken}`;
   sendVerificationEmail(emailTrim, nameVal || emailTrim, verifyUrl);
 
   return res.json({ ok: true, message: "CHECK_EMAIL" });

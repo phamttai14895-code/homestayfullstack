@@ -175,6 +175,7 @@ Copy kết quả vào `SESSION_SECRET=` trong `.env`.
 |------|------------------|
 | `PORT` | 4000 |
 | `FRONTEND_ORIGIN` | https://yourdomain.com |
+| `BACKEND_ORIGIN` | https://yourdomain.com (nếu Nginx proxy toàn bộ) hoặc https://yourdomain.com/api (nếu proxy /api → backend). Dùng cho link xác nhận email đăng ký. |
 | `SESSION_SECRET` | (kết quả openssl rand -hex 32) |
 | `GOOGLE_CALLBACK_URL` | https://yourdomain.com/auth/google/callback |
 | `FACEBOOK_CALLBACK_URL` | https://yourdomain.com/auth/facebook/callback |
@@ -327,7 +328,7 @@ ufw enable
 
 ```bash
 cd /var/www/homestayfullstack
-git pull
+git pull origin main
 
 cd frontend && npm install && npm run build && cd ..
 cd backend && npm install && cd ..
@@ -361,6 +362,7 @@ pm2 restart homestay-api
 | **Trang trắng / 404 khi reload SPA** | Nginx thiếu fallback SPA | Kiểm tra `location /` có `try_files $uri $uri/ /index.html;` |
 | **pm2 startup không in lệnh sudo** | Chạy với root | Với root, PM2 thường tự cấu hình. Chạy `pm2 save` để lưu danh sách process. |
 | **SePay: có tiền vào nhưng không tự động xác nhận** | Webhook không gọi / sai nội dung / 401 | 1) SePay Dashboard → Webhooks: URL đúng `https://yourdomain.com/api/sepay/webhook`, Auth = API Key, API Key trùng `SEPAY_API_KEY` trong .env<br>2) SePay → Company → Payment Code Structure: cấu hình nhận dạng mã đơn (vd. HS-xxx-NVH-xxxxxx) hoặc tắt "Ignore if content does not contain payment code"<br>3) Khách chuyển khoản phải ghi **đúng mã đơn** (hiển thị ở bước thanh toán) vào nội dung CK<br>4) Xem log: `pm2 logs homestay-api` — có dòng `[SePay webhook] received` = webhook có gọi; `Không tìm thấy booking` = nội dung không khớp mã đơn |
+| **Link xác nhận email đăng ký báo "Link không hợp lệ"** | Link trong email trỏ thẳng tới frontend, backend không xử lý token | Link xác nhận phải trỏ tới **backend** để xác thực token rồi redirect về frontend. Trong `backend/.env` thêm/sửa **BACKEND_ORIGIN**:<br>• Cùng domain, Nginx proxy `/api` → backend: `BACKEND_ORIGIN=https://yourdomain.com/api`<br>• Backend chạy riêng subdomain: `BACKEND_ORIGIN=https://api.yourdomain.com`<br>Sau đó restart: `pm2 restart homestay-api`. Đăng ký lại để nhận email mới với link đúng. |
 
 ---
 
@@ -369,7 +371,7 @@ pm2 restart homestay-api
 - [ ] VPS Ubuntu 22.04, Node 20, Nginx, PM2
 - [ ] Clone repo, `npm install` frontend + backend (đường dẫn đúng tên thư mục sau clone)
 - [ ] `frontend/.env`: `VITE_API_URL=https://yourdomain.com` (https), `VITE_CONTACT_PHONE`, `VITE_ZALO_LINK`, `VITE_MESSENGER_LINK`
-- [ ] `backend/.env`: `FRONTEND_ORIGIN`, `SESSION_SECRET`, OAuth callback URLs, `SEPAY_API_KEY` (nếu dùng SePay)
+- [ ] `backend/.env`: `FRONTEND_ORIGIN`, `BACKEND_ORIGIN` (link xác nhận email), `SESSION_SECRET`, OAuth callback URLs, `SEPAY_API_KEY` (nếu dùng SePay)
 - [ ] Build frontend: `cd frontend && npm run build` (hoặc `npx vite build`)
 - [ ] PM2: `NODE_ENV=production pm2 start server.js --name homestay-api`; `pm2 save`; `pm2 startup`
 - [ ] Nginx: serve `frontend/dist`, proxy `/api`, `/auth`, `/uploads`; **X-Forwarded-Proto** dùng `$http_x_forwarded_proto` (khi dùng Cloudflare)

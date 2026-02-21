@@ -178,15 +178,13 @@ export function syncGoogleSheetToBookings() {
       db.prepare("DELETE FROM bookings WHERE source=?").run("google_sheet");
     }
 
-    // Chỉ dùng cột có trong schema gốc (trước migration) để tránh lỗi "X values for Y columns" trên DB cũ.
-    const insert = db.prepare(`
-      INSERT INTO bookings (
-        room_id, user_id, full_name, phone, email,
-        check_in, check_out, guests, note,
-        status, payment_method, payment_status,
-        total_amount, paid_amount, lookup_code
-      ) VALUES (?, NULL, ?, ?, ?, ?, ?, 1, '', ?, 'sepay', 'paid', 0, 0, ?)
-    `);
+    // Chỉ INSERT vào các cột thực sự có trong bảng (tránh "X values for Y columns" trên mọi schema).
+    const tableCols = db.prepare("PRAGMA table_info(bookings)").all().map((row) => row.name);
+    const baseCols = ["room_id", "user_id", "full_name", "phone", "email", "check_in", "check_out", "guests", "note", "status", "payment_method", "payment_status", "total_amount", "paid_amount", "lookup_code"];
+    const insertCols = baseCols.filter((c) => tableCols.includes(c));
+    const placeholders = insertCols.map(() => "?").join(", ");
+    const insert = db.prepare(`INSERT INTO bookings (${insertCols.join(", ")}) VALUES (${placeholders})`);
+
     const hasSource = hasColumn(db, "bookings", "source");
     const hasBookingType = hasColumn(db, "bookings", "booking_type");
     const hasCheckInTime = hasColumn(db, "bookings", "check_in_time");
@@ -194,22 +192,35 @@ export function syncGoogleSheetToBookings() {
     const setBookingType = hasBookingType ? db.prepare("UPDATE bookings SET booking_type=? WHERE id=?") : null;
     const setTimes = hasCheckInTime ? db.prepare("UPDATE bookings SET check_in_time=?, check_out_time=? WHERE id=?") : null;
 
+    const valueFor = (col, r, lookup) => {
+      const v = {
+        room_id: r.room_id,
+        user_id: null,
+        full_name: "(Google Sheet)",
+        phone: "-",
+        email: "",
+        check_in: r.check_in,
+        check_out: r.check_out,
+        guests: 1,
+        note: "",
+        status: r.status,
+        payment_method: "sepay",
+        payment_status: "paid",
+        total_amount: 0,
+        paid_amount: 0,
+        lookup_code: lookup
+      };
+      return v[col];
+    };
+
     let synced = 0;
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (!r.room_id) continue;
       const lookup = "GS-" + r.room_id + "-" + r.check_in + (r.check_in_time ? "-" + r.check_in_time : "") + "-" + i;
       try {
-        const info = insert.run(
-          r.room_id,
-          "(Google Sheet)",
-          "-",
-          "",
-          r.check_in,
-          r.check_out,
-          r.status,
-          lookup
-        );
+        const vals = insertCols.map((c) => valueFor(c, r, lookup));
+        const info = insert.run(...vals);
         const id = info.lastInsertRowid;
         if (id) {
           if (setSource) setSource.run(id);

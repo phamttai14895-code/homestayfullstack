@@ -8,6 +8,7 @@ import { Strategy as FacebookStrategy } from "passport-facebook";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
+import { createRequire } from "module";
 
 import { PORT, FRONTEND, sessionSecret } from "./config.js";
 import { db, parseJsonArray, decorateRoom } from "./db.js";
@@ -16,6 +17,7 @@ import { cleanupExpiredSepay, onlyUploads, parseISODate, toDDMMYYYY } from "./he
 import { isCloudinaryConfigured, uploadBuffer, deleteByPublicId, getPublicIdFromUrl } from "./services/cloudinary.js";
 import { getSepayBankInfo } from "./services/sepay.js";
 import { sendBookingConfirmationEmail } from "./services/email.js";
+import Database from "better-sqlite3";
 import { syncGoogleSheetToBookings, schedulePushToGoogleSheet } from "./services/googleSheet.js";
 
 import publicRouter from "./routes/public.js";
@@ -34,8 +36,27 @@ if (sessionSecret === "dev_secret" || sessionSecret === "change_me") {
   console.warn("⚠️ SESSION_SECRET đang dùng giá trị mặc định. Hãy đặt SESSION_SECRET trong .env khi chạy production.");
 }
 const isProduction = process.env.NODE_ENV === "production";
+
+let sessionStore = undefined;
+if (isProduction) {
+  try {
+    const require = createRequire(import.meta.url);
+    const SqliteStore = require("better-sqlite3-session-store")(session);
+    const sessionDbPath = path.join(process.cwd(), "data", "sessions.sqlite");
+    fs.mkdirSync(path.dirname(sessionDbPath), { recursive: true });
+    const sessionDb = new Database(sessionDbPath);
+    sessionStore = new SqliteStore({
+      client: sessionDb,
+      expired: { clear: true, intervalMs: 15 * 60 * 1000 }
+    });
+  } catch (err) {
+    console.warn("⚠️ Không dùng SQLite session store (dùng MemoryStore):", err.message);
+  }
+}
+
 app.use(
   session({
+    store: sessionStore,
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,

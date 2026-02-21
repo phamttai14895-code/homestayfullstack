@@ -25,7 +25,7 @@
 | **Cookie secure** | ⚠️ | Chưa set `secure: true` khi chạy HTTPS (production). Nên: `cookie: { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" }`. |
 | **Admin** | ✅ | Backend: `requireAdmin` (401/403); frontend: `RequireAdmin` redirect. Admin theo `ADMIN_EMAILS` (env). |
 | **API bảo vệ** | ✅ | `requireLogin` / `requireAdmin` trên route nhạy cảm; GET `/bookings/:id/payment` kiểm tra `user_id` hoặc admin. |
-| **Webhook SePay** | ✅ | So khớp `req.params.secret` với `SEPAY_WEBHOOK_SECRET`. |
+| **Webhook SePay** | ✅ | Xác thực header `Authorization: Apikey SEPAY_API_KEY`. |
 | **Upload ảnh** | ✅ | `onlyUploads()` chỉ chấp nhận URL bắt đầu `/uploads/`, độ dài < 500; không path traversal. |
 | **XSS (email)** | ✅ | `escapeHtml()` dùng trong template email. |
 | **SQL** | ✅ | Tham số hóa (prepared statements), không nối chuỗi SQL từ input. |

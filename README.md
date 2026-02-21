@@ -75,7 +75,7 @@ Các biến quan trọng:
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` — Google OAuth
 - `ADMIN_EMAILS` — danh sách email admin (phân cách dấu phẩy)
 - `SMTP_*` — gửi email xác nhận đặt phòng
-- `SEPAY_*` — bank, webhook SePay
+- `SEPAY_*` — bank, `SEPAY_API_KEY` cho webhook (SePay gửi header `Authorization: Apikey API_KEY`)
 
 **Frontend** — copy và sửa `frontend/.env`:
 
@@ -130,7 +130,7 @@ npm run lint:fix
 | Auth       | `GET /auth/google`, `/auth/google/callback`, `POST /auth/logout` | Đăng nhập Google |
 | User       | `GET /api/me`, `GET /api/my-bookings`, `POST /api/reviews` | Cần đăng nhập |
 | Booking    | `POST /api/bookings`, `GET /api/bookings/:id/payment` | Tạo đơn, thông tin thanh toán |
-| Payment    | `POST /api/sepay/webhook/:secret`   | Webhook SePay             |
+| Payment    | `POST /api/sepay/webhook`   | Webhook SePay (xác thực header `Authorization: Apikey API_KEY`) |
 | Admin      | `GET/POST/PUT/DELETE /api/admin/rooms`, `/api/admin/bookings`, `/api/admin/stats`... | Quản trị |
 
 ## Tính năng

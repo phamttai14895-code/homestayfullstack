@@ -7,20 +7,29 @@ import { schedulePushToGoogleSheet } from "../services/googleSheet.js";
 
 const router = Router();
 
-router.post("/sepay/webhook/:secret", (req, res) => {
-  if (req.params.secret !== process.env.SEPAY_WEBHOOK_SECRET) {
+/** SePay xác thực qua header "Authorization":"Apikey API_KEY" — không dùng webhook secret */
+function validateSepayAuth(req) {
+  const apiKey = process.env.SEPAY_API_KEY;
+  if (!apiKey) return false;
+  const auth = req.headers.authorization || "";
+  return auth === "Apikey " + apiKey || auth === "apikey " + apiKey;
+}
+
+router.post("/sepay/webhook", (req, res) => {
+  if (!validateSepayAuth(req)) {
     return res.status(401).json({ success: false });
   }
 
   const body = req.body || {};
+  // SePay payload: id, referenceCode, content, transferAmount, transferType
   const providerTxnId = String(
-    body.txn_id || body.transactionId || body.id || body.transId || body.reference || ""
+    body.referenceCode || body.id || body.txn_id || body.transactionId || body.transId || body.reference || ""
   ).trim();
-  const amount = Number(body.amount ?? body.transferAmount ?? body.money ?? 0) || 0;
+  const amount = Number(body.transferAmount ?? body.amount ?? body.money ?? 0) || 0;
   const description = String(
-    body.description || body.content || body.memo || body.note || body.transferContent || ""
+    body.content || body.description || body.memo || body.note || body.transferContent || ""
   );
-  const direction = String(body.direction || body.transferType || body.type || "").toLowerCase();
+  const direction = String(body.transferType || body.direction || body.type || "").toLowerCase();
   const status = String(body.status || body.state || "").toUpperCase();
 
   const isIncoming = direction === "in" || direction === "credit" || direction === "incoming" || !direction;

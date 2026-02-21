@@ -107,7 +107,7 @@ pm2 -v
 ```bash
 apt install -y git
 cd /var/www
-git clone https://github.com/YOUR_USERNAME/homestay-app-full.git
+git clone https://github.com/phamttai14895-code/homestayfullstack.git
 cd homestay-app-full
 ```
 
@@ -179,6 +179,9 @@ Copy kết quả vào `SESSION_SECRET=` trong `.env`.
 | `GOOGLE_CALLBACK_URL` | https://yourdomain.com/auth/google/callback |
 | `FACEBOOK_CALLBACK_URL` | https://yourdomain.com/auth/facebook/callback |
 | `ADMIN_DASHBOARD_URL` | https://yourdomain.com/admin |
+| `SEPAY_API_KEY` | API Key từ SePay (webhook gửi header `Authorization: Apikey API_KEY`) |
+
+**SePay webhook:** SePay không dùng webhook secret trong URL. Xác thực bằng API Key qua header `Authorization: Apikey API_KEY`. Webhook URL: `https://yourdomain.com/api/sepay/webhook`. Trong SePay Dashboard → Webhooks → chọn loại xác thực **API Key**.
 
 Lưu: `Ctrl+O` → Enter → `Ctrl+X`
 
@@ -191,7 +194,7 @@ Lưu: `Ctrl+O` → Enter → `Ctrl+X`
 **Quan trọng:** Biến Vite nhúng lúc build. Phải set trước khi `npm run build`.
 
 ```bash
-cd /var/www/homestay-app-full/frontend
+cd /var/www/homestayfullstack/frontend
 cp .env.example .env
 nano .env
 ```
@@ -300,7 +303,7 @@ Nếu `ln` báo "File exists", bỏ qua — symlink đã có sẵn.
 
 ```bash
 apt install -y certbot python3-certbot-nginx
-certbot --nginx -d yourdomain.com -d www.yourdomain.com
+certbot --nginx -d abcjqk.space -d www.abcjqk.space
 ```
 
 Làm theo hướng dẫn. Certbot sẽ tự cập nhật cấu hình Nginx cho HTTPS.

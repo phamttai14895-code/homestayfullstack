@@ -332,7 +332,7 @@ git pull origin main
 
 cd frontend && npm install && npm run build && cd ..
 cd backend && npm install && cd ..
-pm2 restart homestay-api
+    pm2 restart homestay-api
 ```
 
 ---

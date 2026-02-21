@@ -1,0 +1,1193 @@
+/* ============================================
+   Homestay Booking — Design System
+   Đồng bộ: ấm, rõ ràng, dễ dùng cho web đặt homestay
+============================================ */
+
+:root {
+  /* Safe area cho notch/rounded corners */
+  --sat: env(safe-area-inset-top, 0);
+  --sab: env(safe-area-inset-bottom, 0);
+  --sal: env(safe-area-inset-left, 0);
+  --sar: env(safe-area-inset-right, 0);
+  --touch-target: 44px;
+
+  /* Primary: teal homestay */
+  --pri: #0d9488;
+  --pri-hover: #0f766e;
+  --pri-light: rgba(13, 148, 136, 0.12);
+  --pri-border: rgba(13, 148, 136, 0.28);
+
+  /* Semantic */
+  --danger: #dc2626;
+  --danger-light: rgba(220, 38, 38, 0.1);
+  --success: #059669;
+  --success-light: rgba(5, 150, 105, 0.12);
+  --warning: #d97706;
+  --warning-light: rgba(217, 119, 6, 0.15);
+
+  /* Neutrals */
+  --text: #1e293b;
+  --text-soft: #334155;
+  --muted: #64748b;
+  --muted-bg: #f1f5f9;
+  --border: rgba(30, 41, 59, 0.1);
+  --border-strong: rgba(30, 41, 59, 0.14);
+
+  /* Surfaces */
+  --card: #ffffff;
+  --bg: #f8fafc;
+  --bg-2: #f1f5f9;
+  --bg-hero: linear-gradient(165deg, #f0fdfa 0%, #f8fafc 40%, #f1f5f9 100%);
+  --on-pri: #ffffff;
+
+  /* Spacing (đồng bộ) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Breakpoints (tham chiếu) */
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 960px;
+  --bp-xl: 1120px;
+
+  /* Radius & shadow */
+  --r: 16px;
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-lg: 20px;
+  --r-full: 9999px;
+  --drawer-bg: linear-gradient(180deg, #fef3c7 0%, #fde68a 50%, #fcd34d 100%);
+  --shadow: 0 4px 20px rgba(30, 41, 59, 0.08), 0 1px 3px rgba(30, 41, 59, 0.06);
+  --shadow-hover: 0 12px 32px rgba(30, 41, 59, 0.12), 0 2px 8px rgba(30, 41, 59, 0.06);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 6px 20px rgba(30, 41, 59, 0.08);
+
+  /* Transition chung */
+  --ease: 0.2s ease;
+  --ease-out: 0.25s cubic-bezier(0.2, 0.9, 0.2, 1);
+
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Dark mode ========== */
+html.dark-mode {
+  --text: #f1f5f9;
+  --text-soft: #e2e8f0;
+  --muted: #94a3b8;
+  --muted-bg: #1e293b;
+  --border: rgba(241, 245, 249, 0.12);
+  --border-strong: rgba(241, 245, 249, 0.2);
+  --card: #0f172a;
+  --bg: #0c1222;
+  --bg-2: rgba(255, 255, 255, 0.06);
+  --bg-hero: linear-gradient(165deg, #0f172a 0%, #0c1222 40%, #0f172a 100%);
+  --on-pri: #ffffff;
+  --drawer-bg: linear-gradient(180deg, #1e293b 0%, #0f172a 50%, #0c1222 100%);
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2), 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+html.dark-mode .topbar,
+html.dark-mode .topbar-outside {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+html.dark-mode .btn-ghost {
+  background: var(--muted-bg);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+html.dark-mode .btn-ghost:hover {
+  background: rgba(30, 41, 59, 0.8);
+}
+
+html.dark-mode .topbar-locale-toggle,
+html.dark-mode .topbar-select {
+  background: var(--muted-bg);
+  border-color: var(--border-strong);
+}
+
+html.dark-mode .locale-btn:hover {
+  background: var(--muted-bg);
+}
+
+html.dark-mode .site-footer {
+  background: linear-gradient(180deg, #0f172a 0%, #0c1222 100%);
+}
+
+html.dark-mode .searchbar,
+html.dark-mode .searchbar input,
+html.dark-mode .input input,
+html.dark-mode .input select,
+html.dark-mode .input textarea {
+  background: var(--muted-bg);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+html.dark-mode .input input::placeholder,
+html.dark-mode .input textarea::placeholder,
+html.dark-mode .searchbar input::placeholder {
+  color: var(--muted);
+}
+
+/* Chip (Thuê qua đêm / Thuê theo giờ) — tránh nền trắng, chọn giống VI|EN */
+html.dark-mode .chip {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+html.dark-mode .chip:hover {
+  background: var(--muted-bg);
+}
+
+html.dark-mode .chip.on {
+  background: var(--pri);
+  color: var(--card);
+  border-color: var(--pri);
+}
+
+html.dark-mode .chip.on:hover {
+  background: var(--pri-hover);
+}
+
+/* Cal popover (calendar tooltip) — tránh chữ trắng trên nền sáng */
+html.dark-mode .cal-popover {
+  background: var(--muted-bg);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+html.dark-mode .cal-popover .t2 {
+  color: var(--muted);
+}
+
+/* Bulkbar (Admin) — tránh nền trắng */
+html.dark-mode .bulkbar {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: var(--border-strong);
+}
+
+/* Toast & toast-undo — tránh chữ trắng trên nền sáng */
+html.dark-mode .toast-undo-inner,
+html.dark-mode .toast {
+  background: var(--muted-bg);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+html.dark-mode .toast-undo-inner .muted,
+html.dark-mode .toast .t-sub {
+  color: var(--muted);
+}
+
+html.dark-mode .toast .t-ico,
+html.dark-mode .toast .t-x {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+/* Payment countdown card — giá trị trong ô trắng */
+html.dark-mode .payment-countdown-card__value,
+html.dark-mode .payment-countdown-inline__value {
+  background: var(--card);
+  color: var(--pri);
+}
+
+html.dark-mode .payment-countdown-card__value[data-low="true"] {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--danger);
+}
+
+/* Floating contact panel head */
+html.dark-mode .fc-panel__head {
+  background: linear-gradient(180deg, var(--muted-bg) 0%, rgba(30, 41, 59, 0.6) 100%);
+}
+
+/* RDP calendar — dark mode đồng bộ */
+html.dark-mode .cal-wrap {
+  background: var(--card);
+  border-radius: var(--r);
+  border: 1px solid var(--border-strong);
+  padding: var(--space-3);
+}
+
+html.dark-mode .rdp-root,
+html.dark-mode .rdp {
+  --rdp-accent-color: var(--pri);
+  --rdp-accent-background-color: rgba(13, 148, 136, 0.2);
+  --rdp-range_middle-background-color: rgba(13, 148, 136, 0.18);
+  --rdp-range_start-date-background-color: var(--pri);
+  --rdp-range_end-date-background-color: var(--pri);
+  --rdp-today-color: var(--pri);
+  color: var(--text);
+}
+
+html.dark-mode .rdp-month_caption,
+html.dark-mode .rdp-caption_label {
+  color: var(--text);
+  font-weight: 700;
+}
+
+html.dark-mode .rdp-chevron {
+  fill: var(--pri);
+}
+
+html.dark-mode .rdp-button_next:hover,
+html.dark-mode .rdp-button_previous:hover {
+  color: var(--pri);
+}
+
+html.dark-mode .rdp-weekday {
+  color: var(--muted);
+  opacity: 1;
+}
+
+html.dark-mode .rdp-day_button {
+  color: var(--text);
+}
+
+html.dark-mode .rdp-day_button:hover:not(:disabled) {
+  background: var(--muted-bg);
+  color: var(--text);
+}
+
+html.dark-mode .rdp-day-num {
+  color: inherit;
+}
+
+html.dark-mode .rdp-day-price {
+  background: var(--muted-bg);
+  color: var(--text-soft);
+}
+
+html.dark-mode .rdp-day_disabled,
+html.dark-mode .rdp-day_outside {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+html.dark-mode .rdp-day_disabled .rdp-day_button {
+  cursor: not-allowed;
+}
+
+html.dark-mode .rdp-day_weekend .rdp-day-num,
+html.dark-mode .rdp-day_holiday .rdp-day-num {
+  color: var(--danger);
+}
+
+html.dark-mode .rdp-day_weekend .rdp-day-price,
+html.dark-mode .rdp-day_holiday .rdp-day-price {
+  color: var(--danger);
+  background: var(--danger-light);
+}
+
+html.dark-mode .rdp-range_middle .rdp-day_button {
+  background-color: var(--rdp-range_middle-background-color) !important;
+  color: var(--text);
+}
+
+html.dark-mode .rdp-range_middle .rdp-day-num {
+  color: var(--text);
+}
+
+html.dark-mode .rdp-range_middle .rdp-day-price {
+  background: rgba(13, 148, 136, 0.25);
+  color: var(--text-soft);
+}
+
+html.dark-mode .rdp-range_start .rdp-day-price,
+html.dark-mode .rdp-range_end .rdp-day-price,
+html.dark-mode .rdp-selected:not(.rdp-range_start):not(.rdp-range_end):not(.rdp-range_middle) .rdp-day-price {
+  background: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+html.dark-mode .rdp-today:not(.rdp-outside) .rdp-day-num {
+  color: var(--pri);
+  font-weight: 800;
+}
+
+/* Select option — tránh option nền trắng (Chrome) */
+html.dark-mode select option {
+  background: var(--muted-bg);
+  color: var(--text);
+}
+
+/* Badge pending — màu rõ trên nền tối */
+html.dark-mode .badge.pending {
+  background: rgba(217, 119, 6, 0.25);
+  border-color: rgba(217, 119, 6, 0.5);
+  color: var(--warning);
+}
+
+html.dark-mode .topbar-bell-dropdown {
+  background: var(--card);
+  border-color: var(--border-strong);
+}
+
+html.dark-mode .topbar-bell-dropdown__head {
+  border-bottom-color: var(--border-strong);
+  color: var(--text);
+}
+
+html.dark-mode .topbar-avatar-dropdown {
+  background: var(--card);
+  border-color: var(--border-strong);
+}
+
+
+html.dark-mode .topbar-avatar-dropdown__head {
+  border-bottom-color: var(--border-strong);
+}
+
+html.dark-mode .topbar-avatar-dropdown__name {
+  color: var(--text);
+}
+
+/* Nút dark mode góc trái — dark mode */
+html.dark-mode .theme-toggle-float__btn {
+  background: var(--muted-bg);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+html.dark-mode .theme-toggle-float__btn:hover {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: var(--pri-border);
+}
+
+/* ========== Pay summary (tổng tiền, SePay) — My Bookings & Booking ========== */
+.pay-summary-card {
+  background: linear-gradient(180deg, var(--card), var(--bg));
+}
+
+.pay-summary-title {
+  font-weight: 950;
+}
+
+.pay-total-value {
+  font-weight: 950;
+  font-size: 18px;
+  color: var(--text);
+}
+
+.pay-summary-card .pay-total-value {
+  color: var(--pri);
+}
+
+/* Dark mode: tránh nền trắng, chữ khó nhìn */
+html.dark-mode .pay-summary-card {
+  background: linear-gradient(180deg, var(--card), var(--muted-bg));
+  border-color: var(--border-strong);
+}
+
+html.dark-mode .pay-summary-card .muted {
+  color: var(--muted);
+}
+
+html.dark-mode .pay-summary-card .pay-summary-title,
+html.dark-mode .pay-summary-card .pay-total-value,
+html.dark-mode .pay-summary-card b,
+html.dark-mode .pay-summary-card .row2 > div > div:last-child {
+  color: var(--text);
+}
+
+html.dark-mode .pay-summary-card .pay-total-value {
+  color: var(--pri);
+}
+
+/* Tổng tiền trong row2 (Tra cứu) */
+html.dark-mode .pay-summary-card .row2 .muted {
+  color: var(--muted);
+}
+
+* {
+  box-sizing: border-box;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--text);
+}
+
+p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ========== Layout ========== */
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-5) calc(56px + var(--sab));
+  padding-left: max(var(--space-5), var(--sal));
+  padding-right: max(var(--space-5), var(--sar));
+}
+
+/* Tiêu đề section trang (đồng bộ) */
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0 0 var(--space-3);
+}
+
+.card2 .section-title,
+.card2 h2.section-title {
+  font-size: 1rem;
+  margin-bottom: var(--space-3);
+}
+
+/* Utility font-weight */
+.fw-800 { font-weight: 800; }
+.fw-950 { font-weight: 950; }
+
+.sitemap-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sitemap-nav a {
+  color: var(--pri);
+  font-weight: 600;
+}
+.sitemap-nav a:hover {
+  text-decoration: underline;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error-message {
+  color: var(--danger);
+  font-weight: 800;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .row2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========== Topbar ========== */
+.topbar-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding-top: var(--sat);
+}
+
+.topbar {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-outside {
+  display: none;
+}
+
+.topbar-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5);
+  padding-left: max(var(--space-5), var(--sal));
+  padding-right: max(var(--space-5), var(--sar));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.topbar-left {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.topbar-left:hover {
+  opacity: 0.9;
+}
+
+.topbar-head {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Nút đăng nhập mobile: chỉ hiện trên mobile, ẩn trên desktop/tablet */
+.topbar-login-mobile {
+  display: none;
+}
+
+@media (min-width: 641px) {
+  .topbar-login-mobile {
+    display: none !important;
+  }
+}
+
+.topbar-login-desktop {
+  margin-left: 0;
+}
+
+.topbar-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.topbar-hamburger:hover {
+  background: var(--bg-2);
+  color: var(--text);
+}
+.topbar-hamburger-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.topbar-hamburger-lines span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.topbar-hamburger-x {
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 300;
+}
+
+.logo {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.t-title {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.t-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+.topbar-right {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.topbar-select {
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.topbar-select:hover {
+  border-color: var(--pri-border);
+}
+
+/* Nút công tắc VI | EN — VI mặc định (VND), EN → USD */
+.topbar-locale-toggle {
+  display: inline-flex;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: var(--card);
+}
+
+.locale-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.locale-btn:hover {
+  color: var(--text);
+  background: var(--muted-bg);
+}
+
+.locale-btn--on {
+  color: var(--on-pri);
+  background: var(--pri);
+}
+
+.locale-btn--on:hover {
+  background: var(--pri-hover);
+}
+
+/* Nút chuyển Dark / Light mode */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: color var(--ease), background var(--ease), border-color var(--ease);
+}
+
+.theme-toggle:hover {
+  color: var(--text);
+  background: var(--muted-bg);
+  border-color: var(--pri-border);
+}
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.topbar-bell-wrap {
+  position: relative;
+}
+
+.topbar-bell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.topbar-bell:hover {
+  background: var(--muted-bg);
+  color: var(--text);
+}
+
+.topbar-bell svg {
+  width: 22px;
+  height: 22px;
+}
+
+.topbar-bell__dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  border: 2px solid var(--card);
+}
+
+.topbar-bell-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  min-width: 280px;
+  max-width: 90vw;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-hover);
+  z-index: 50;
+}
+
+.topbar-bell-dropdown__head {
+  padding: 12px 14px;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-bell-dropdown__list {
+  padding: 6px 0;
+}
+
+.topbar-bell-dropdown__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.topbar-bell-dropdown__item:hover {
+  background: var(--muted-bg);
+}
+
+.topbar-bell-dropdown__item-title {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.topbar-bell-dropdown__item-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.topbar-bell-dropdown__empty {
+  padding: 20px 14px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.topbar-avatar-wrap {
+  position: relative;
+}
+
+.topbar-avatar-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  transition: background 0.15s ease;
+}
+
+.topbar-avatar-trigger:hover {
+  background: var(--muted-bg);
+}
+
+.topbar-avatar-trigger .uname {
+  max-width: 140px;
+}
+
+.topbar-avatar-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  min-width: 220px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-hover);
+  z-index: 50;
+}
+
+.topbar-avatar-dropdown__head {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-avatar-dropdown__name {
+  display: block;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.topbar-avatar-dropdown__email {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.topbar-avatar-dropdown__list {
+  padding: 6px 0;
+}
+
+.topbar-avatar-dropdown__item {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  text-decoration: none;
+}
+
+.topbar-avatar-dropdown__item:hover {
+  background: var(--muted-bg);
+}
+
+.topbar-avatar-dropdown__item--danger {
+  color: var(--danger);
+}
+
+.topbar-avatar-dropdown__item--danger:hover {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.uinfo {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-full);
+  object-fit: cover;
+  border: 2px solid var(--border);
+}
+
+.avatar-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-full);
+  border: 2px solid var(--border);
+  background: var(--muted-bg);
+  font-weight: 800;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-soft);
+}
+
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  border-radius: var(--r-full);
+  background: var(--danger);
+  color: var(--on-pri);
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.uname {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-soft);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ========== Buttons ========== */
+.btn {
+  border: 0;
+  background: var(--pri);
+  color: var(--on-pri);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  transition: background var(--ease), transform 0.15s ease, box-shadow var(--ease);
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.25);
+}
+
+.btn:hover {
+  background: var(--pri-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.3);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-sm {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  min-height: var(--touch-target);
+}
+
+.btn.danger {
+  background: var(--danger);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+.btn.danger:hover {
+  filter: brightness(0.95);
+}
+
+.btn-ghost {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  box-shadow: none;
+}
+
+.btn-ghost:hover {
+  background: var(--muted-bg);
+  border-color: var(--border);
+}
+
+.btn:focus-visible,
+.btn-ghost:focus-visible,
+.chip:focus-visible,
+.searchbar input:focus-visible {
+  outline: 2px solid var(--pri);
+  outline-offset: 2px;
+}
+
+/* Skip link for a11y */
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--pri);
+  color: var(--on-pri);
+  font-weight: 700;
+  border-radius: var(--r-sm);
+  z-index: 100;
+  transition: top 0.2s ease;
+}
+.skip-link:focus {
+  top: 16px;
+}
+
+/* ========== Page header (brand) — đồng bộ mọi trang ========== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.625rem;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.brand p {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+/* ========== Hero (Home) ========== */
+.hero {
+  background: var(--bg-hero);
+  margin: calc(-1 * var(--space-5)) calc(-1 * var(--space-5)) 0;
+  padding: var(--space-8) var(--space-5) var(--space-6);
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  margin-bottom: var(--space-6);
+}
+
+.hero h1 {
+  font-size: 1.75rem;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.hero p {
+  margin: var(--space-3) 0 0;
+  color: var(--text-soft);
+  font-size: 1rem;
+  max-width: 520px;
+  line-height: 1.5;
+}
+
+/* Chips: Thuê qua đêm / Thuê theo giờ */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-5);
+}
+
+.chip {
+  border: 1px solid var(--border-strong);
+  background: var(--card);
+  color: var(--text);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--r-full);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.chip:hover {
+  background: var(--muted-bg);
+  border-color: var(--border);
+}
+
+.chip.on {
+  background: var(--pri-light);
+  border-color: var(--pri-border);
+  color: var(--pri);
+}
+
+/* Search bar */
+.searchbar {
+  margin-top: var(--space-5);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: var(--space-3) var(--space-4);
+  min-height: var(--touch-target);
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  box-shadow: var(--shadow);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.searchbar:focus-within {
+  border-color: var(--pri-border);
+  box-shadow: 0 0 0 3px var(--pri-light);
+}
+
+.searchbar input {
+  border: 0;
+  outline: none;
+  width: 100%;
+  font-size: 15px;
+  background: transparent;
+  color: var(--text);
+}
+
+.searchbar input::placeholder {
+  color: var(--muted);
+}
+
+.count {
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 13px;
+  min-width: 24px;
+  text-align: right;
+}

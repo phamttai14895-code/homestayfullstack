@@ -125,7 +125,9 @@ export default function Payment() {
         <div className="card2 payment-success-block" role="status" aria-live="polite">
           <div className="payment-success-check-wrap">
             <svg className="payment-success-check-svg" viewBox="0 0 80 80" aria-hidden="true">
-              <circle className="payment-success-check-circle" cx="40" cy="40" r="36" strokeWidth="3" />
+              <g transform="rotate(-90 40 40)">
+                <circle className="payment-success-check-circle" cx="40" cy="40" r="36" strokeWidth="3" />
+              </g>
               <path className="payment-success-check-mark" d="M22 40 L35 53 L58 28" strokeWidth="3" />
             </svg>
           </div>

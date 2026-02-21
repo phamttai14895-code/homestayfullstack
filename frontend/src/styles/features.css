@@ -1591,7 +1591,6 @@ html.dark-mode .mini-img .x:hover {
 .payment-success-check-svg {
   width: 80px;
   height: 80px;
-  transform: rotate(-90deg);
 }
 
 .payment-success-check-circle {

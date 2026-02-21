@@ -200,6 +200,8 @@ if (FACEBOOK_ID && FACEBOOK_SECRET) {
 }
 
 app.use("/auth", authRouter);
+/* Link xác nhận email có thể dùng BACKEND_ORIGIN=https://domain.com/api → /api/auth/verify-email */
+app.use("/api/auth", authRouter);
 
 app.post("/auth/logout", (req, res) => {
   req.logout(() => {

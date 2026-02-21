@@ -26,7 +26,7 @@ import paymentRouter from "./routes/payment.js";
 import wishlistRouter from "./routes/wishlist.js";
 
 const app = express();
-
+app.set('trust proxy', 1);
 app.use(cors({ origin: FRONTEND, credentials: true }));
 app.use(express.json({ limit: "5mb" }));
 
@@ -41,7 +41,7 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: isProduction ? "none" : "lax",
       secure: isProduction
     }
   })
@@ -121,7 +121,15 @@ if (GOOGLE_ID && GOOGLE_SECRET) {
   app.get(
     "/auth/google/callback",
     passport.authenticate("google", { failureRedirect: FRONTEND }),
-    (req, res) => res.redirect(FRONTEND)
+    (req, res) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.redirect(FRONTEND + "?error=session");
+        }
+        res.redirect(FRONTEND);
+      });
+    }
   );
 } else {
   console.log("⚠️ Google OAuth disabled. Set GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET in backend/.env");
@@ -177,7 +185,15 @@ if (FACEBOOK_ID && FACEBOOK_SECRET) {
   app.get(
     "/auth/facebook/callback",
     passport.authenticate("facebook", { failureRedirect: FRONTEND }),
-    (req, res) => res.redirect(FRONTEND)
+    (req, res) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.redirect(FRONTEND + "?error=session");
+        }
+        res.redirect(FRONTEND);
+      });
+    }
   );
 } else {
   console.log("⚠️ Facebook OAuth disabled. Set FACEBOOK_APP_ID & FACEBOOK_APP_SECRET in backend/.env");

@@ -492,6 +492,28 @@ systemctl reload nginx
 
 Mở `http://yourdomain.com` (chưa HTTPS). Nếu thấy giao diện Homestay App là OK.
 
+**Nếu bị lỗi Cloudflare 521 "Web server is down":** Cloudflare không kết nối được tới VPS. Kiểm tra:
+
+1. **Nginx đang chạy:**
+   ```bash
+   systemctl status nginx
+   ```
+   Nếu inactive: `systemctl start nginx`
+
+2. **Firewall mở port 80/443:**
+   ```bash
+   ufw status
+   ufw allow 80
+   ufw allow 443
+   ufw reload
+   ```
+
+3. **Cloudflare SSL/TLS:** Vào Cloudflare → SSL/TLS → chọn **Flexible** (Cloudflare→user: HTTPS, Cloudflare→origin: HTTP) cho tới khi cài SSL trên VPS.
+
+4. **DNS A record:** Cloudflare DNS → A record phải trỏ đúng **IP VPS** (proxy bật = icon mây cam).
+
+5. **Thử truy cập trực tiếp qua IP:** Mở `http://IP_VPS` trên trình duyệt. Nếu OK qua IP nhưng lỗi qua domain → kiểm tra `server_name` trong Nginx có đúng domain chưa.
+
 ---
 
 ## Bước 10: Cài SSL (HTTPS) với Let's Encrypt
@@ -608,6 +630,7 @@ pm2 restart homestay-api
 | **SQLite permission denied** | Thư mục backend không có quyền ghi | `chown -R www-data:www-data /var/www/homestay-app-full` hoặc `chmod 755 backend` |
 | **npm install better-sqlite3 fails** | Thiếu build tools | `apt install -y build-essential python3` rồi chạy lại `npm install` trong backend |
 | **Trang trắng / 404 khi reload** | SPA routing | Kiểm tra Nginx có `try_files $uri $uri/ /index.html;` trong `location /` |
+| **Cloudflare 521 Web server is down** | Cloudflare không kết nối được origin | Xem [Bước 9.6](#96-test-trên-trình-duyệt): Nginx chạy, UFW mở 80/443, SSL mode = Flexible (chưa cài SSL trên VPS) |
 
 ---
 

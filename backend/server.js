@@ -721,6 +721,12 @@ app.listen(PORT, () => {
   const pollMinutes = Number(process.env.GOOGLE_SHEETS_POLL_MINUTES || 0);
   if (pollMinutes > 0 && process.env.GOOGLE_SHEETS_SPREADSHEET_ID) {
     const ms = pollMinutes * 60 * 1000;
+    syncGoogleSheetToBookings()
+      .then(({ synced, error }) => {
+        if (error) console.warn("[GoogleSheets] startup sync failed:", error);
+        else if (synced > 0) console.log("[GoogleSheets] startup synced", synced, "rows");
+      })
+      .catch((e) => console.warn("[GoogleSheets] startup sync error:", e?.message || e));
     setInterval(() => {
       syncGoogleSheetToBookings()
         .then(({ synced, error }) => {
@@ -730,5 +736,7 @@ app.listen(PORT, () => {
         .catch((e) => console.warn("[GoogleSheets] poll error:", e?.message || e));
     }, ms);
     console.log(`📊 Google Sheets: đồng bộ Sheet→Web mỗi ${pollMinutes} phút`);
+  } else if (process.env.GOOGLE_SHEETS_SPREADSHEET_ID && !pollMinutes) {
+    console.log("📊 Google Sheets: POLL_MINUTES=0 → chỉ đồng bộ Sheet→Web khi admin bấm «Đồng bộ» hoặc set GOOGLE_SHEETS_POLL_MINUTES>0");
   }
 });

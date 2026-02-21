@@ -36,5 +36,5 @@ Thumbs.db
 npm-debug.log*
 
 # Credentials (Google Sheets, etc.)
-# credentials/
-# credentials/*.json
+credentials/
+credentials/*.json

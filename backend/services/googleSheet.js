@@ -1,8 +1,21 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { google } from "googleapis";
 import { db } from "../db.js";
 import { parseTime } from "../helpers.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const BACKEND_DIR = path.resolve(__dirname, "..");
+
+/** Resolve đường dẫn credentials: ưu tiên từ thư mục backend (tránh lỗi khi PM2 chạy từ project root). */
+function resolveCredPath(credPath) {
+  if (!credPath) return null;
+  const fromCwd = path.resolve(process.cwd(), credPath);
+  const fromBackend = path.resolve(BACKEND_DIR, credPath);
+  if (fs.existsSync(fromBackend)) return fromBackend;
+  return fromCwd;
+}
 
 function normalizeTimeStr(s) {
   const t = parseTime(s);
@@ -18,9 +31,11 @@ export async function fetchGoogleSheetBookings() {
   const credPath = process.env.GOOGLE_SHEETS_CREDENTIALS_PATH;
   if (!spreadsheetId || !credPath) return { ok: false, rows: [], error: "MISSING_CONFIG" };
 
+  const resolvedPath = resolveCredPath(credPath);
+  if (!resolvedPath) return { ok: false, rows: [], error: "CREDENTIALS_READ_FAIL" };
   let cred;
   try {
-    const raw = fs.readFileSync(path.resolve(process.cwd(), credPath), "utf8");
+    const raw = fs.readFileSync(resolvedPath, "utf8");
     cred = JSON.parse(raw);
   } catch (e) {
     return { ok: false, rows: [], error: "CREDENTIALS_READ_FAIL" };
@@ -102,7 +117,10 @@ export async function fetchGoogleSheetBookings() {
 
 export function syncGoogleSheetToBookings() {
   return fetchGoogleSheetBookings().then(({ ok, rows, error }) => {
-    if (!ok) return { synced: 0, error };
+    if (!ok) {
+      if (error && error !== "MISSING_CONFIG") console.warn("[GoogleSheets] fetch failed:", error);
+      return { synced: 0, error };
+    }
     db.prepare("DELETE FROM bookings WHERE source=?").run("google_sheet");
 
     const insert = db.prepare(`
@@ -139,6 +157,7 @@ export function syncGoogleSheetToBookings() {
         console.warn("[GoogleSheets] sync row failed:", e?.message || e);
       }
     }
+    if (synced > 0) console.log("[GoogleSheets] Sheet→Web synced", synced, "rows");
     return { synced, error: null };
   });
 }
@@ -147,11 +166,13 @@ export async function pushBookingsToGoogleSheet() {
   const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
   const webRange = process.env.GOOGLE_SHEETS_WEB_RANGE || "Web!A2:F500";
   const credPath = process.env.GOOGLE_SHEETS_CREDENTIALS_PATH;
-  if (!spreadsheetId || !credPath || !webRange) return { ok: false, error: "MISSING_CONFIG" };
+  if (!spreadsheetId || !credPath) return { ok: false, error: "MISSING_CONFIG" };
 
+  const resolvedPath = resolveCredPath(credPath);
+  if (!resolvedPath) return { ok: false, error: "CREDENTIALS_READ_FAIL" };
   let cred;
   try {
-    const raw = fs.readFileSync(path.resolve(process.cwd(), credPath), "utf8");
+    const raw = fs.readFileSync(resolvedPath, "utf8");
     cred = JSON.parse(raw);
   } catch (e) {
     return { ok: false, error: "CREDENTIALS_READ_FAIL" };
@@ -184,16 +205,24 @@ export async function pushBookingsToGoogleSheet() {
   try {
     await sheets.spreadsheets.values.clear({ spreadsheetId, range: webRange });
     if (values.length > 0) {
+      const rangeMatch = webRange.match(/^([^!]+)!([A-Z]+)(\d+)/);
+      const sheetPart = rangeMatch ? rangeMatch[1] : "Web";
+      const startRow = rangeMatch ? parseInt(rangeMatch[3], 10) : 2;
+      const endRow = startRow + values.length - 1;
+      const updateRange = `${sheetPart}!A${startRow}:F${endRow}`;
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: webRange,
+        range: updateRange,
         valueInputOption: "RAW",
         requestBody: { values }
       });
     }
+    console.log("[GoogleSheets] push OK →", webRange, "rows:", values.length);
     return { ok: true, count: values.length };
   } catch (e) {
-    return { ok: false, error: String(e?.message || e) };
+    const errMsg = String(e?.message || e);
+    console.warn("[GoogleSheets] push failed:", errMsg, "| range:", webRange);
+    return { ok: false, error: errMsg };
   }
 }
 

@@ -52,7 +52,11 @@ export default function AdminBookingsSection({
     setSheetSyncLoading(true);
     try {
       const d = await adminSyncGoogleSheet();
-      setSheetSyncMsg(d.message || "Đã đồng bộ " + (d.synced || 0) + " đặt phòng.");
+      let msg = d.message || "Đã đồng bộ " + (d.synced || 0) + " đặt phòng.";
+      if ((d.synced === 0 && d.rawRowCount > 0) && Array.isArray(d.roomNames) && d.roomNames.length > 0) {
+        msg += " Cột A trong Sheet phải là một trong: " + d.roomNames.join(", ");
+      }
+      setSheetSyncMsg(msg);
       if (d.synced >= 0) loadBookings();
     } catch (e) {
       setSheetSyncMsg(e?.message || "Lỗi đồng bộ");

@@ -580,10 +580,16 @@ app.delete("/api/admin/reviews/:id", requireAdmin, async (req, res) => {
 });
 
 app.post("/api/admin/sync-google-sheet", requireAdmin, (req, res) => {
+  const roomNames = db.prepare("SELECT id, name FROM rooms ORDER BY id").all().map((r) => `${r.name} (id:${r.id})`);
   syncGoogleSheetToBookings()
-    .then(({ synced, error }) => {
-      if (error) return res.status(400).json({ error, synced: synced || 0 });
-      res.json({ synced, message: "Đã đồng bộ " + synced + " đặt phòng từ Google Sheet." });
+    .then(({ synced, error, fetched, rawRowCount }) => {
+      if (error) return res.status(400).json({ error, synced: synced || 0, fetched: fetched || 0, rawRowCount: rawRowCount || 0, roomNames });
+      const msg = rawRowCount === 0
+        ? "Sheet không có dữ liệu (hoặc range sai). Kiểm tra tab và dòng 2 trở đi."
+        : synced === 0 && (fetched === 0 || rawRowCount > 0)
+          ? "Không có dòng nào hợp lệ. Cột A phải là tên phòng hoặc ID (xem roomNames); B,C = ngày; D = pending hoặc confirmed."
+          : "Đã đồng bộ " + synced + " đặt phòng từ Google Sheet. Lịch web đã cập nhật.";
+      res.json({ synced, fetched: fetched || 0, rawRowCount: rawRowCount || 0, message: msg, roomNames });
     })
     .catch((err) => res.status(500).json({ error: String(err?.message || err) }));
 });

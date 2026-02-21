@@ -25,9 +25,21 @@ function normalizeTimeStr(s) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-/** Chuẩn hóa ngày từ Sheet: chấp nhận YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY → trả về YYYY-MM-DD hoặc null. */
-function parseSheetDate(str) {
-  const s = String(str || "").trim();
+/** Chuẩn hóa ngày từ Sheet: chuỗi (YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY) hoặc số serial (Google/Excel) → YYYY-MM-DD. */
+function parseSheetDate(val) {
+  if (val == null || val === "") return null;
+  if (typeof val === "number") {
+    const serial = Math.floor(Number(val));
+    if (serial < 1) return null;
+    const ms = (serial - 25569) * 86400 * 1000;
+    const d = new Date(ms);
+    if (Number.isNaN(d.getTime())) return null;
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    return `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  const s = String(val).trim();
   if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   const dmy = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
@@ -47,16 +59,23 @@ export async function fetchGoogleSheetBookings() {
   const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
   const range = process.env.GOOGLE_SHEETS_RANGE || "Sheet1!A2:F500";
   const credPath = process.env.GOOGLE_SHEETS_CREDENTIALS_PATH;
-  if (!spreadsheetId || !credPath) return { ok: false, rows: [], error: "MISSING_CONFIG" };
+  if (!spreadsheetId || !credPath) {
+    console.warn("[GoogleSheets] fetch skipped: MISSING_CONFIG (SPREADSHEET_ID hoặc CREDENTIALS_PATH)");
+    return { ok: false, rows: [], error: "MISSING_CONFIG", rawRowCount: 0 };
+  }
 
   const resolvedPath = resolveCredPath(credPath);
-  if (!resolvedPath) return { ok: false, rows: [], error: "CREDENTIALS_READ_FAIL" };
+  if (!resolvedPath) {
+    console.warn("[GoogleSheets] CREDENTIALS_READ_FAIL: không tìm thấy file", credPath);
+    return { ok: false, rows: [], error: "CREDENTIALS_READ_FAIL", rawRowCount: 0 };
+  }
   let cred;
   try {
     const raw = fs.readFileSync(resolvedPath, "utf8");
     cred = JSON.parse(raw);
   } catch (e) {
-    return { ok: false, rows: [], error: "CREDENTIALS_READ_FAIL" };
+    console.warn("[GoogleSheets] CREDENTIALS_READ_FAIL:", e?.message || e);
+    return { ok: false, rows: [], error: "CREDENTIALS_READ_FAIL", rawRowCount: 0 };
   }
 
   const auth = new google.auth.GoogleAuth({
@@ -66,10 +85,21 @@ export async function fetchGoogleSheetBookings() {
   const sheets = google.sheets({ version: "v4", auth });
   let data;
   try {
-    const res = await sheets.spreadsheets.values.get({ spreadsheetId, range });
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range,
+      dateTimeRenderOption: "FORMATTED_STRING"
+    });
     data = res.data.values || [];
   } catch (e) {
-    return { ok: false, rows: [], error: String(e?.message || e) };
+    const errMsg = String(e?.message || e);
+    console.warn("[GoogleSheets] fetch failed:", errMsg, "| range:", range);
+    return { ok: false, rows: [], error: errMsg, rawRowCount: 0 };
+  }
+
+  const rawRowCount = data.length;
+  if (rawRowCount === 0) {
+    console.warn("[GoogleSheets] Sheet trả về 0 dòng. Kiểm tra: range=", range, "| Có dữ liệu từ dòng 2 trong Sheet chưa?");
   }
 
   const roomsByName = new Map();
@@ -131,15 +161,19 @@ export async function fetchGoogleSheetBookings() {
     }
   }
 
-  return { ok: true, rows };
+  console.log("[GoogleSheets] fetch OK: range=", range, "| raw rows=", rawRowCount, "| parsed=", rows.length);
+  return { ok: true, rows, rawRowCount };
 }
 
 export function syncGoogleSheetToBookings() {
-  return fetchGoogleSheetBookings().then(({ ok, rows, error }) => {
+  return fetchGoogleSheetBookings().then(({ ok, rows, error, rawRowCount = 0 }) => {
     if (!ok) {
-      if (error && error !== "MISSING_CONFIG") console.warn("[GoogleSheets] fetch failed:", error);
-      return { synced: 0, error };
+      return { synced: 0, error, fetched: 0, rawRowCount };
     }
+    if (rows.length === 0 && rawRowCount > 0) {
+      console.warn("[GoogleSheets] Tất cả", rawRowCount, "dòng bị bỏ qua. Kiểm tra: Cột A = tên phòng hoặc ID (trùng với app); B,C = ngày (2026-04-29 hoặc 29-04-2026); D = pending hoặc confirmed.");
+    }
+
     db.prepare("DELETE FROM bookings WHERE source=?").run("google_sheet");
 
     const insert = db.prepare(`
@@ -176,8 +210,11 @@ export function syncGoogleSheetToBookings() {
         console.warn("[GoogleSheets] sync row failed:", e?.message || e);
       }
     }
-    if (synced > 0) console.log("[GoogleSheets] Sheet→Web synced", synced, "rows");
-    return { synced, error: null };
+    console.log("[GoogleSheets] Sheet→Web: đã xóa booking từ Sheet cũ, insert", synced, "dòng. Lịch web sẽ chặn các ngày tương ứng.");
+    if (synced === 0 && rawRowCount > 0) {
+      console.warn("[GoogleSheets] Không insert được dòng nào. Kiểm tra cột A (tên phòng phải trùng với phòng trong app).");
+    }
+    return { synced, error: null, fetched: rows.length, rawRowCount };
   });
 }
 

@@ -100,7 +100,12 @@
     "err_password_short": "Mật khẩu cần ít nhất 6 ký tự.",
     "err_password_mismatch": "Mật khẩu xác nhận không khớp.",
     "verify_success": "Xác nhận email thành công! Bạn có thể đăng nhập.",
-    "verify_expired": "Link xác nhận đã hết hạn. Vui lòng đăng ký lại."
+    "verify_expired": "Link xác nhận đã hết hạn. Vui lòng đăng ký lại.",
+    "resend_verify_btn": "Gửi lại link xác nhận đăng ký",
+    "resend_verify_success": "Đã gửi lại link. Vui lòng kiểm tra email (và hộp thư rác).",
+    "resend_verify_not_found": "Email chưa đăng ký hoặc đã xác nhận rồi.",
+    "check_email_hint": "Chưa nhận được email? Gửi lại link xác nhận.",
+    "err_too_many_requests": "Gửi quá nhiều lần. Vui lòng thử lại sau vài phút."
   },
   "profile": {
     "page_title": "Thông tin cá nhân",

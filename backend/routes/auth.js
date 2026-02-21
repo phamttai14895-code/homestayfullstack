@@ -77,6 +77,36 @@ router.get("/verify-email", authLimiter, (req, res) => {
   return res.redirect(`${FRONTEND}/verify-email?success=1`);
 });
 
+/** POST /auth/resend-verify-email - Gửi lại link xác nhận đăng ký (token mới) */
+const resendVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "TOO_MANY_REQUESTS" },
+  standardHeaders: true
+});
+router.post("/resend-verify-email", resendVerifyLimiter, (req, res) => {
+  const emailTrim = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  if (!emailTrim || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+    return res.status(400).json({ error: "INVALID_EMAIL" });
+  }
+
+  const user = db.prepare("SELECT id, name, email_verified FROM users WHERE email=?").get(emailTrim);
+  if (!user || user.email_verified) {
+    return res.status(400).json({ error: "NOT_FOUND_OR_ALREADY_VERIFIED" });
+  }
+
+  const verifyToken = generateVerifyToken();
+  const expiresAt = new Date(Date.now() + VERIFY_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000).toISOString();
+  db.prepare("UPDATE users SET verify_token=?, verify_token_expires=? WHERE id=?")
+    .run(verifyToken, expiresAt, user.id);
+
+  const apiBase = BACKEND_ORIGIN.replace(/\/$/, "");
+  const verifyUrl = `${apiBase}/auth/verify-email?token=${verifyToken}`;
+  sendVerificationEmail(emailTrim, user.name || emailTrim.split("@")[0], verifyUrl);
+
+  return res.json({ ok: true, message: "CHECK_EMAIL" });
+});
+
 /** POST /auth/login - Đăng nhập bằng email + mật khẩu */
 router.post("/login", authLimiter, async (req, res, next) => {
   const { email, password } = req.body || {};

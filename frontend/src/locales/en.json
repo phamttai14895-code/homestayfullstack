@@ -100,7 +100,12 @@
     "err_password_short": "Password must be at least 6 characters.",
     "err_password_mismatch": "Passwords do not match.",
     "verify_success": "Email verified successfully! You can now log in.",
-    "verify_expired": "Verification link has expired. Please register again."
+    "verify_expired": "Verification link has expired. Please register again.",
+    "resend_verify_btn": "Resend verification link",
+    "resend_verify_success": "Verification link sent. Please check your email (and spam folder).",
+    "resend_verify_not_found": "Email not found or already verified.",
+    "check_email_hint": "Didn't receive the email? Resend verification link.",
+    "err_too_many_requests": "Too many requests. Please try again in a few minutes."
   },
   "profile": {
     "page_title": "Personal info",

@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { BASE, register, loginEmail } from "../api";
+import { BASE, register, loginEmail, resendVerifyEmail } from "../api";
 import { useI18n } from "../context/I18n.jsx";
 import { useUser } from "../context/User.jsx";
 
 export default function AuthModal({ open, onClose }) {
   const { t } = useI18n();
   const { refresh } = useUser();
-  const [mode, setMode] = useState("oauth"); // oauth | register | login
+  const [mode, setMode] = useState("oauth"); // oauth | register | login | resend
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -46,12 +46,30 @@ export default function AuthModal({ open, onClose }) {
     try {
       await register({ email: email.trim(), password, name: name.trim() });
       setSuccess(t("auth.register_success"));
-      reset();
+      setPassword("");
+      setPasswordConfirm("");
     } catch (e) {
       const msg = e?.message || "";
       if (msg.includes("EMAIL_EXISTS")) setErr(t("auth.err_email_exists"));
       else if (msg.includes("PASSWORD_TOO_SHORT")) setErr(t("auth.err_password_short"));
       else setErr(msg || "Lỗi đăng ký.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendVerify = async () => {
+    if (!email.trim()) return;
+    setErr("");
+    setLoading(true);
+    try {
+      await resendVerifyEmail(email.trim());
+      setSuccess(t("auth.resend_verify_success"));
+    } catch (e) {
+      const msg = e?.message || "";
+      if (msg.includes("NOT_FOUND_OR_ALREADY_VERIFIED")) setErr(t("auth.resend_verify_not_found"));
+      else if (msg.includes("TOO_MANY_REQUESTS")) setErr(t("auth.err_too_many_requests") || "Vui lòng thử lại sau vài phút.");
+      else setErr(msg || "Lỗi.");
     } finally {
       setLoading(false);
     }
@@ -88,7 +106,7 @@ export default function AuthModal({ open, onClose }) {
       <div className="login-modal" onClick={(e) => e.stopPropagation()} role="document">
         <div className="login-modal__head">
           <h2 id="auth-modal-title" className="login-modal__title">
-            {mode === "oauth" ? t("common.login") : mode === "register" ? t("common.register") : t("common.login")}
+            {mode === "oauth" ? t("common.login") : mode === "register" ? t("common.register") : mode === "resend" ? t("auth.resend_verify_btn") : t("common.login")}
           </h2>
           <button type="button" className="login-modal__close" onClick={handleClose} aria-label={t("common.close")}>
             ×
@@ -125,6 +143,38 @@ export default function AuthModal({ open, onClose }) {
           </div>
         )}
 
+        {mode === "resend" && (
+          <div className="login-modal__form">
+            {success && <p className="login-modal__success" role="alert">{success}</p>}
+            {err && <p className="login-modal__error" role="alert">{err}</p>}
+            <div className="input">
+              <label htmlFor="auth-resend-email">{t("common.email")}</label>
+              <input
+                id="auth-resend-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t("common.email")}
+                autoComplete="email"
+              />
+            </div>
+            <button
+              type="button"
+              className="login-modal__btn login-modal__btn--submit"
+              disabled={loading || !email.trim()}
+              onClick={handleResendVerify}
+            >
+              {loading ? t("common.loading") : t("auth.resend_verify_btn")}
+            </button>
+            <button type="button" className="login-modal__link" onClick={() => { setMode("login"); reset(); }}>
+              ← {t("common.login_email")}
+            </button>
+            <button type="button" className="login-modal__link" onClick={() => { setMode("oauth"); reset(); }}>
+              ← {t("auth.back")}
+            </button>
+          </div>
+        )}
+
         {(mode === "register" || mode === "login") && (
           <form
             className="login-modal__form"
@@ -132,65 +182,90 @@ export default function AuthModal({ open, onClose }) {
           >
             {success && <p className="login-modal__success" role="alert">{success}</p>}
             {err && <p className="login-modal__error" role="alert">{err}</p>}
-            <div className="input">
-              <label htmlFor="auth-email">{t("common.email")}</label>
-              <input
-                id="auth-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-            </div>
-            {mode === "register" && (
-              <div className="input">
-                <label htmlFor="auth-name">{t("common.name")}</label>
-                <input
-                  id="auth-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoComplete="name"
-                />
-              </div>
+            {mode === "register" && success ? (
+              <>
+                <p className="login-modal__hint muted" style={{ marginBottom: 12 }}>{t("auth.check_email_hint")}</p>
+                <button
+                  type="button"
+                  className="login-modal__btn login-modal__btn--submit"
+                  disabled={loading}
+                  onClick={handleResendVerify}
+                >
+                  {loading ? t("common.loading") : t("auth.resend_verify_btn")}
+                </button>
+                <button type="button" className="login-modal__link" onClick={() => { setSuccess(""); setErr(""); }}>
+                  {t("common.login_email")}
+                </button>
+                <button type="button" className="login-modal__link" onClick={() => { setMode("oauth"); reset(); }}>
+                  ← {t("auth.back")}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="input">
+                  <label htmlFor="auth-email">{t("common.email")}</label>
+                  <input
+                    id="auth-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+                {mode === "register" && (
+                  <div className="input">
+                    <label htmlFor="auth-name">{t("common.name")}</label>
+                    <input
+                      id="auth-name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      autoComplete="name"
+                    />
+                  </div>
+                )}
+                <div className="input">
+                  <label htmlFor="auth-password">{t("common.password")}</label>
+                  <input
+                    id="auth-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete={mode === "register" ? "new-password" : "current-password"}
+                  />
+                </div>
+                {mode === "register" && (
+                  <div className="input">
+                    <label htmlFor="auth-password-confirm">{t("common.password_confirm")}</label>
+                    <input
+                      id="auth-password-confirm"
+                      type="password"
+                      value={passwordConfirm}
+                      onChange={(e) => setPasswordConfirm(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                )}
+                <button type="submit" className="login-modal__btn login-modal__btn--submit" disabled={loading}>
+                  {loading ? t("common.loading") : mode === "register" ? t("common.register") : t("common.login")}
+                </button>
+                <button
+                  type="button"
+                  className="login-modal__link"
+                  onClick={() => { setMode(mode === "register" ? "login" : "register"); reset(); }}
+                >
+                  {mode === "register" ? t("common.login_email") : t("common.register_email")}
+                </button>
+                <button type="button" className="login-modal__link" onClick={() => { setMode("resend"); setErr(""); setSuccess(""); setPassword(""); setPasswordConfirm(""); setName(""); }}>
+                  {t("auth.resend_verify_btn")}
+                </button>
+                <button type="button" className="login-modal__link" onClick={() => { setMode("oauth"); reset(); }}>
+                  ← {t("auth.back")}
+                </button>
+              </>
             )}
-            <div className="input">
-              <label htmlFor="auth-password">{t("common.password")}</label>
-              <input
-                id="auth-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete={mode === "register" ? "new-password" : "current-password"}
-              />
-            </div>
-            {mode === "register" && (
-              <div className="input">
-                <label htmlFor="auth-password-confirm">{t("common.password_confirm")}</label>
-                <input
-                  id="auth-password-confirm"
-                  type="password"
-                  value={passwordConfirm}
-                  onChange={(e) => setPasswordConfirm(e.target.value)}
-                  autoComplete="new-password"
-                />
-              </div>
-            )}
-            <button type="submit" className="login-modal__btn login-modal__btn--submit" disabled={loading}>
-              {loading ? t("common.loading") : mode === "register" ? t("common.register") : t("common.login")}
-            </button>
-            <button
-              type="button"
-              className="login-modal__link"
-              onClick={() => { setMode(mode === "register" ? "login" : "register"); reset(); }}
-            >
-              {mode === "register" ? t("common.login_email") : t("common.register_email")}
-            </button>
-            <button type="button" className="login-modal__link" onClick={() => { setMode("oauth"); reset(); }}>
-              ← {t("auth.back")}
-            </button>
           </form>
         )}
       </div>

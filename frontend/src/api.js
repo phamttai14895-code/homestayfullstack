@@ -51,6 +51,16 @@ export async function register(payload) {
   }));
 }
 
+/** Gửi lại link xác nhận đăng ký (token mới gửi vào email) */
+export async function resendVerifyEmail(email) {
+  return j(await fetch(`${BASE}/auth/resend-verify-email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email: email.trim() })
+  }));
+}
+
 /** Đăng nhập bằng email + mật khẩu */
 export async function loginEmail(email, password) {
   return j(await fetch(`${BASE}/auth/login`, {

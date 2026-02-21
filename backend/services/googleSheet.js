@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { google } from "googleapis";
-import { db } from "../db.js";
+import { db, hasColumn } from "../db.js";
 import { parseTime } from "../helpers.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -174,7 +174,9 @@ export function syncGoogleSheetToBookings() {
       console.warn("[GoogleSheets] Tất cả", rawRowCount, "dòng bị bỏ qua. Kiểm tra: Cột A = tên phòng hoặc ID (trùng với app); B,C = ngày (2026-04-29 hoặc 29-04-2026); D = pending hoặc confirmed.");
     }
 
-    db.prepare("DELETE FROM bookings WHERE source=?").run("google_sheet");
+    if (hasColumn(db, "bookings", "source")) {
+      db.prepare("DELETE FROM bookings WHERE source=?").run("google_sheet");
+    }
 
     const insert = db.prepare(`
       INSERT INTO bookings (
@@ -182,9 +184,10 @@ export function syncGoogleSheetToBookings() {
         check_in, check_out, guests, note, booking_type, check_in_time, check_out_time,
         status, payment_method, payment_status,
         total_amount, paid_amount, deposit_percent, deposit_amount,
-        lookup_code, source
-      ) VALUES (?, NULL, ?, ?, ?, ?, ?, 1, '', ?, ?, ?, ?, ?, 'sepay', 'paid', 0, 0, 0, 0, ?, 'google_sheet')
+        lookup_code
+      ) VALUES (?, NULL, ?, ?, ?, ?, ?, 1, '', ?, ?, ?, ?, ?, 'sepay', 'paid', 0, 0, 0, 0, ?)
     `);
+    const setSource = db.prepare("UPDATE bookings SET source='google_sheet' WHERE id=?");
 
     let synced = 0;
     for (let i = 0; i < rows.length; i++) {
@@ -192,7 +195,7 @@ export function syncGoogleSheetToBookings() {
       if (!r.room_id) continue;
       const lookup = "GS-" + r.room_id + "-" + r.check_in + (r.check_in_time ? "-" + r.check_in_time : "") + "-" + i;
       try {
-        insert.run(
+        const info = insert.run(
           r.room_id,
           "(Google Sheet)",
           "-",
@@ -205,12 +208,14 @@ export function syncGoogleSheetToBookings() {
           r.status,
           lookup
         );
+        if (info.lastInsertRowid && hasColumn(db, "bookings", "source")) setSource.run(info.lastInsertRowid);
         synced++;
+        console.log("[GoogleSheets] inserted block: room_id=" + r.room_id + " check_in=" + r.check_in + " check_out=" + r.check_out + " (lịch chặn từ check_in đến trước check_out)");
       } catch (e) {
         console.warn("[GoogleSheets] sync row failed:", e?.message || e);
       }
     }
-    console.log("[GoogleSheets] Sheet→Web: đã xóa booking từ Sheet cũ, insert", synced, "dòng. Lịch web sẽ chặn các ngày tương ứng.");
+    console.log("[GoogleSheets] Sheet→Web: đã xóa booking từ Sheet cũ, insert", synced, "dòng. Reload trang đặt phòng để thấy lịch chặn.");
     if (synced === 0 && rawRowCount > 0) {
       console.warn("[GoogleSheets] Không insert được dòng nào. Kiểm tra cột A (tên phòng phải trùng với phòng trong app).");
     }

@@ -369,10 +369,11 @@ pm2 restart homestay-api
 
 ### Điền Google Sheet để chặn ngày trên web (lịch đặt phòng)
 
-- Dùng **tab được đọc bởi app** (mặc định là **Sheet1**, theo `GOOGLE_SHEETS_RANGE=Sheet1!A2:F500`). **Không** điền vào tab **Web** (tab Web do app ghi đơn từ web lên, sẽ bị ghi đè).
-- **Cột:** A = Phòng (tên phòng hoặc ID), B = Check-in, C = Check-out, D = status (`pending` hoặc `confirmed`), E, F = giờ bắt đầu/kết thúc (nếu đặt theo giờ).
-- **Ngày:** Có thể nhập **2026-04-29** hoặc **29-04-2026** (hoặc 29/04/2026). Sau khi đồng bộ, các ngày này sẽ bị chặn trên lịch đặt phòng web.
-- **Đồng bộ:** Đặt `GOOGLE_SHEETS_POLL_MINUTES=5` (hoặc số phút bất kỳ > 0) để app tự đọc Sheet mỗi N phút; hoặc vào **Admin → Đồng bộ Google Sheet** và bấm đồng bộ thủ công. Sau khi sync, lịch trên web sẽ hiển thị các ngày đã điền trong Sheet là đã đặt/chặn.
+- Dùng **tab được đọc bởi app** (mặc định **Sheet1**, theo `GOOGLE_SHEETS_RANGE=Sheet1!A2:F500`). **Không** điền vào tab **Web** (tab Web do app ghi đơn từ web lên, sẽ bị ghi đè).
+- **Cột:** A = Phòng (tên phòng hoặc **ID phòng** — phải trùng với phòng trong app), B = Check-in, C = Check-out, D = status (`pending` hoặc `confirmed`), E, F = giờ (nếu đặt theo giờ).
+- **Check-out là ngày trả phòng (exclusive):** Trên web, một ngày bị chặn nếu `check_in <= ngày < check_out`. Ví dụ: check-in=29-04-2026, check-out=30-04-2026 → **chỉ chặn 29/4**. Để chặn **cả 29 và 30/4** cần check-out=**2026-05-01** (ngày trả phòng).
+- **Ngày:** Có thể nhập 2026-04-29 hoặc 29-04-2026 (hoặc 29/04/2026).
+- **Sau khi đồng bộ:** Vào trang đặt phòng (hoặc trang chi tiết phòng), **reload (F5)** để lịch cập nhật chặn đúng ngày. Xem log `pm2 logs homestay-api`: dòng `inserted block: room_id=X check_in=... check_out=...` cho biết phòng và khoảng ngày đã chặn.
 
 ---
 

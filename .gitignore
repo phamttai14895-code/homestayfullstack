@@ -35,6 +35,7 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# Credentials (Google Sheets, etc.)
+# Credentials (Google Sheets, etc.) — không commit lên Git
 credentials/
-credentials/*.json
+**/credentials/
+**/credentials/*.json

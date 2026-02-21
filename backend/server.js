@@ -50,7 +50,10 @@ if (isProduction) {
       expired: { clear: true, intervalMs: 15 * 60 * 1000 }
     });
   } catch (err) {
-    console.warn("⚠️ Không dùng SQLite session store (dùng MemoryStore):", err.message);
+    const msg = err && (err.code === "MODULE_NOT_FOUND" || err.message?.includes("Cannot find module"))
+      ? "Chạy trong thư mục backend: npm install (cần better-sqlite3-session-store). " + (err.message || "")
+      : (err?.message || String(err));
+    console.warn("⚠️ Không dùng SQLite session store (dùng MemoryStore):", msg);
   }
 }
 

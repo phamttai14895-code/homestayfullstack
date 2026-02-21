@@ -178,16 +178,21 @@ export function syncGoogleSheetToBookings() {
       db.prepare("DELETE FROM bookings WHERE source=?").run("google_sheet");
     }
 
+    // Chỉ dùng cột có trong schema gốc (trước migration) để tránh lỗi "X values for Y columns" trên DB cũ.
     const insert = db.prepare(`
       INSERT INTO bookings (
         room_id, user_id, full_name, phone, email,
-        check_in, check_out, guests, note, booking_type, check_in_time, check_out_time,
+        check_in, check_out, guests, note,
         status, payment_method, payment_status,
-        total_amount, paid_amount, deposit_percent, deposit_amount,
-        lookup_code
-      ) VALUES (?, NULL, ?, ?, ?, ?, ?, 1, '', ?, ?, ?, ?, ?, 'sepay', 'paid', 0, 0, 0, 0, ?)
+        total_amount, paid_amount, lookup_code
+      ) VALUES (?, NULL, ?, ?, ?, ?, ?, 1, '', ?, 'sepay', 'paid', 0, 0, ?)
     `);
-    const setSource = db.prepare("UPDATE bookings SET source='google_sheet' WHERE id=?");
+    const hasSource = hasColumn(db, "bookings", "source");
+    const hasBookingType = hasColumn(db, "bookings", "booking_type");
+    const hasCheckInTime = hasColumn(db, "bookings", "check_in_time");
+    const setSource = hasSource ? db.prepare("UPDATE bookings SET source='google_sheet' WHERE id=?") : null;
+    const setBookingType = hasBookingType ? db.prepare("UPDATE bookings SET booking_type=? WHERE id=?") : null;
+    const setTimes = hasCheckInTime ? db.prepare("UPDATE bookings SET check_in_time=?, check_out_time=? WHERE id=?") : null;
 
     let synced = 0;
     for (let i = 0; i < rows.length; i++) {
@@ -202,13 +207,15 @@ export function syncGoogleSheetToBookings() {
           "",
           r.check_in,
           r.check_out,
-          r.booking_type || "overnight",
-          r.check_in_time || null,
-          r.check_out_time || null,
           r.status,
           lookup
         );
-        if (info.lastInsertRowid && hasColumn(db, "bookings", "source")) setSource.run(info.lastInsertRowid);
+        const id = info.lastInsertRowid;
+        if (id) {
+          if (setSource) setSource.run(id);
+          if (setBookingType) setBookingType.run(r.booking_type || "overnight", id);
+          if (setTimes) setTimes.run(r.check_in_time || null, r.check_out_time || null, id);
+        }
         synced++;
         console.log("[GoogleSheets] inserted block: room_id=" + r.room_id + " check_in=" + r.check_in + " check_out=" + r.check_out + " (lịch chặn từ check_in đến trước check_out)");
       } catch (e) {

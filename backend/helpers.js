@@ -123,13 +123,20 @@ export function findBookingByCodeFromDesc(description) {
   const codePrefix = BOOKING_CODE_PREFIX + "-";
   let id = null;
   let code = null;
+  // Format có dấu gạch: HS-5-NVH-472TWE
   if (desc.startsWith(prefix)) {
     const rest = desc.slice(prefix.length);
     const match = rest.match(/^(\d+)-/);
     if (match) id = parseInt(match[1], 10);
   }
-  const codeMatch = desc.match(new RegExp(codePrefix + "([A-Z0-9]{6})", "i"));
-  if (codeMatch) code = codeMatch[0].toUpperCase();
+  const codeMatch = desc.match(new RegExp(codePrefix + "-?([A-Z0-9]{6})", "i"));
+  if (codeMatch) code = codePrefix + "-" + codeMatch[1].toUpperCase();
+  // Format SePay (không dấu gạch): HS5NVH472TWE
+  const noHyphenMatch = desc.match(new RegExp("^" + ORDER_PREFIX + "(\\d+)" + BOOKING_CODE_PREFIX + "([A-Z0-9]{6})", "i"));
+  if (noHyphenMatch) {
+    id = parseInt(noHyphenMatch[1], 10);
+    code = codePrefix + "-" + noHyphenMatch[2].toUpperCase();
+  }
   if (id) {
     const b = db.prepare(`SELECT * FROM bookings WHERE id=?`).get(id);
     if (b) return b;

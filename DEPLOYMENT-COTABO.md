@@ -181,7 +181,8 @@ Copy kết quả vào `SESSION_SECRET=` trong `.env`.
 | `ADMIN_DASHBOARD_URL` | https://yourdomain.com/admin |
 | `SEPAY_API_KEY` | API Key từ SePay (webhook gửi header `Authorization: Apikey API_KEY`) |
 
-**SePay webhook:** SePay không dùng webhook secret trong URL. Xác thực bằng API Key qua header `Authorization: Apikey API_KEY`. Webhook URL: `https://yourdomain.com/api/sepay/webhook`. Trong SePay Dashboard → Webhooks → chọn loại xác thực **API Key**.
+**SePay webhook:** SePay không dùng webhook secret trong URL. Xác thực bằng API Key qua header `Authorization: Apikey API_KEY`. Webhook URL: `https://yourdomain.com/api/sepay/webhook`. Trong SePay Dashboard → Webhooks → chọn loại xác thực **API Key**.  
+**Quan trọng:** Nếu bật "Ignore if transaction content does not contain payment code", cần cấu hình **Company → General Settings → Payment Code Structure** để SePay nhận dạng mã đơn (vd: `HS-123-NVH-XXXXXX`). App dùng nội dung chuyển khoản để tìm đơn (order code = ORDER_PREFIX-id-lookup_code). Khách chuyển khoản phải ghi đúng mã đơn vào nội dung.
 
 Lưu: `Ctrl+O` → Enter → `Ctrl+X`
 
@@ -324,7 +325,7 @@ ufw enable
 ## Cập nhật code sau này
 
 ```bash
-cd /var/www/homestay-app-full
+cd /var/www/homestayfullstack
 git pull
 
 cd frontend && npm install && npm run build && cd ..
@@ -358,6 +359,7 @@ pm2 restart homestay-api
 | **npm install better-sqlite3 fails** | Thiếu build tools | `apt install -y build-essential python3` rồi `npm install` trong backend |
 | **Trang trắng / 404 khi reload SPA** | Nginx thiếu fallback SPA | Kiểm tra `location /` có `try_files $uri $uri/ /index.html;` |
 | **pm2 startup không in lệnh sudo** | Chạy với root | Với root, PM2 thường tự cấu hình. Chạy `pm2 save` để lưu danh sách process. |
+| **SePay: có tiền vào nhưng không tự động xác nhận** | Webhook không gọi / sai nội dung / 401 | 1) SePay Dashboard → Webhooks: URL đúng `https://yourdomain.com/api/sepay/webhook`, Auth = API Key, API Key trùng `SEPAY_API_KEY` trong .env<br>2) SePay → Company → Payment Code Structure: cấu hình nhận dạng mã đơn (vd. HS-xxx-NVH-xxxxxx) hoặc tắt "Ignore if content does not contain payment code"<br>3) Khách chuyển khoản phải ghi **đúng mã đơn** (hiển thị ở bước thanh toán) vào nội dung CK<br>4) Xem log: `pm2 logs homestay-api` — có dòng `[SePay webhook] received` = webhook có gọi; `Không tìm thấy booking` = nội dung không khớp mã đơn |
 
 ---
 

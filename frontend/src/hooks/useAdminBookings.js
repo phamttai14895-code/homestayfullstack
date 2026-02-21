@@ -228,6 +228,8 @@ export function useAdminBookings() {
 
   useEffect(() => {
     loadBookings();
+    const t = setInterval(loadBookings, 5000);
+    return () => clearInterval(t);
   }, [loadBookings]);
 
   const remainingSec = undoState

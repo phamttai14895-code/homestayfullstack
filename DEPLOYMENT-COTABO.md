@@ -108,10 +108,10 @@ pm2 -v
 apt install -y git
 cd /var/www
 git clone https://github.com/phamttai14895-code/homestayfullstack.git
-cd homestay-app-full
+cd homestayfullstack
 ```
 
-**Thay `YOUR_USERNAME`** bằng username GitHub. Nếu repo private, dùng Deploy token hoặc SSH key.
+**Thay `YOUR_USERNAME`** bằng username GitHub. Nếu repo của bạn có tên khác (vd: `homestayfullstack`), sau khi clone sẽ có thư mục tương ứng — dùng đúng tên đó và thay thế `homestay-app-full` trong toàn bộ đường dẫn phía dưới.
 
 ---
 
@@ -120,7 +120,7 @@ cd homestay-app-full
 ### 6.1 Root
 
 ```bash
-cd /var/www/homestay-app-full
+cd /var/www/homestayfullstack
 npm install
 ```
 
@@ -158,14 +158,14 @@ cd backend && npm install && cd ..
 ### 7.1 Backend (`backend/.env`)
 
 ```bash
-cd /var/www/homestay-app-full/backend
+cd /var/www/homestayfullstack/backend
 cp .env.example .env
 nano .env
 ```
 
 **Tạo SESSION_SECRET:**
 ```bash
-openssl rand -hex 32
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 Copy kết quả vào `SESSION_SECRET=` trong `.env`.
 
@@ -221,7 +221,7 @@ cd ..
 ## Bước 8: Chạy Backend với PM2
 
 ```bash
-cd /var/www/homestay-app-full/backend
+cd /var/www/homestayfullstack/backend
 NODE_ENV=production pm2 start server.js --name homestay-api
 pm2 save
 pm2 startup
@@ -253,7 +253,7 @@ server {
     listen 80;
     server_name yourdomain.com www.yourdomain.com;
 
-    root /var/www/homestay-app-full/frontend/dist;
+    root /var/www/homestayfullstack/frontend/dist;
     index index.html;
 
     location / {
@@ -363,19 +363,21 @@ pm2 restart homestay-api
 
 ---
 
-## Checklist deploy
+## Checklist deploy (soát lần cuối)
 
 - [ ] VPS Ubuntu 22.04, Node 20, Nginx, PM2
-- [ ] Clone repo, `npm install` frontend + backend
-- [ ] `frontend/.env`: `VITE_API_URL=https://yourdomain.com` (https)
-- [ ] `backend/.env`: `FRONTEND_ORIGIN`, `SESSION_SECRET`, OAuth callback URLs
+- [ ] Clone repo, `npm install` frontend + backend (đường dẫn đúng tên thư mục sau clone)
+- [ ] `frontend/.env`: `VITE_API_URL=https://yourdomain.com` (https), `VITE_CONTACT_PHONE`, `VITE_ZALO_LINK`, `VITE_MESSENGER_LINK`
+- [ ] `backend/.env`: `FRONTEND_ORIGIN`, `SESSION_SECRET`, OAuth callback URLs, `SEPAY_API_KEY` (nếu dùng SePay)
 - [ ] Build frontend: `cd frontend && npm run build` (hoặc `npx vite build`)
-- [ ] PM2: `NODE_ENV=production pm2 start server.js --name homestay-api`
-- [ ] Nginx: serve `frontend/dist`, proxy `/api`, `/auth`, `/uploads`
-- [ ] SSL (certbot) nếu không dùng Cloudflare Flexible
+- [ ] PM2: `NODE_ENV=production pm2 start server.js --name homestay-api`; `pm2 save`; `pm2 startup`
+- [ ] Nginx: serve `frontend/dist`, proxy `/api`, `/auth`, `/uploads`; **X-Forwarded-Proto** dùng `$http_x_forwarded_proto` (khi dùng Cloudflare)
+- [ ] Nginx: `client_max_body_size 10M` (upload ảnh admin)
+- [ ] SSL (certbot) hoặc Cloudflare Flexible
 - [ ] UFW mở 22, 80, 443
 - [ ] Google/Facebook OAuth: thêm callback URL production
-- [ ] Test đăng nhập → kiểm tra cookie `connect.sid` trong DevTools
+- [ ] SePay: Webhook URL `https://yourdomain.com/api/sepay/webhook`, Auth = API Key
+- [ ] Test đăng nhập → cookie `connect.sid`; test SePay webhook → đơn tự cập nhật
 
 ---
 

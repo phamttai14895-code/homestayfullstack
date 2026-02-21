@@ -25,6 +25,24 @@ function normalizeTimeStr(s) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/** Chuẩn hóa ngày từ Sheet: chấp nhận YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY → trả về YYYY-MM-DD hoặc null. */
+function parseSheetDate(str) {
+  const s = String(str || "").trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const dmy = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if (dmy) {
+    const [, d, m, y] = dmy;
+    const day = parseInt(d, 10);
+    const month = parseInt(m, 10);
+    const year = parseInt(y, 10);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+  return null;
+}
+
 export async function fetchGoogleSheetBookings() {
   const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
   const range = process.env.GOOGLE_SHEETS_RANGE || "Sheet1!A2:F500";
@@ -59,18 +77,18 @@ export async function fetchGoogleSheetBookings() {
     roomsByName.set(String(r.name || "").trim().toLowerCase(), r.id);
   }
 
-  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
   const rows = [];
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
     const a = String(row[0] || "").trim();
-    const b = String(row[1] || "").trim();
-    const c = String(row[2] || "").trim();
+    const bRaw = String(row[1] || "").trim();
+    const cRaw = String(row[2] || "").trim();
     const d = String(row[3] || "").trim().toLowerCase();
     const e = String(row[4] || "").trim();
     const f = String(row[5] || "").trim();
-    if (!a || !b) continue;
-    if (!dateRe.test(b)) continue;
+    if (!a || !bRaw) continue;
+    const b = parseSheetDate(bRaw);
+    if (!b) continue;
 
     let roomId = null;
     const num = Number(a);
@@ -98,7 +116,8 @@ export async function fetchGoogleSheetBookings() {
         booking_type: "hourly"
       });
     } else {
-      if (!c || !dateRe.test(c)) continue;
+      const c = parseSheetDate(cRaw);
+      if (!c) continue;
       if (b >= c) continue;
       rows.push({
         room_id: roomId,

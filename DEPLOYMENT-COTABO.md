@@ -367,6 +367,13 @@ pm2 restart homestay-api
 | **Đã cấu hình SMTP nhưng vẫn không thấy email** | Sai mật khẩu / port / bị chặn / vào spam | 1) **Xem log khi có đơn hoặc đăng ký:** `pm2 logs homestay-api` — nếu gửi thành công sẽ thấy `[Email] ... sent → email@...`; nếu lỗi sẽ thấy `[Email] ... failed → ...` kèm **code** và **response** (ví dụ Invalid login, self-signed certificate).<br>2) **Gmail:** dùng **App Password** (không dùng mật khẩu đăng nhập). Bật 2 bước xác minh → Tài khoản Google → Bảo mật → Mật khẩu ứng dụng. `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_SECURE=true`, `SMTP_USER=your@gmail.com`, `SMTP_PASS=app_password_16_chars`.<br>3) **Port:** 465 (SSL) hoặc 587 (TLS). Nếu 587: `SMTP_PORT=587`, `SMTP_SECURE=false` (nodemailer dùng STARTTLS).<br>4) **VPS chặn outbound 465/587:** mở port: `ufw allow out 465` và/hoặc `587`; hoặc dùng SMTP relay khác.<br>5) Kiểm tra **hộp thư rác** và whitelist địa chỉ gửi (SMTP_FROM / SMTP_USER). |
 | **Google Sheet không đồng bộ 2 chiều** | Thiếu cấu hình / quyền / tab / polling | 1) **Web→Sheet (ghi đơn lên Sheet):** Mỗi khi tạo/cập nhật/xóa đơn, backend gọi push. Xem log: `pm2 logs homestay-api` — thấy `[GoogleSheets] push OK → ...` = thành công; `push failed` = lỗi (thường do tab "Web" không tồn tại hoặc Sheet chưa share với Service Account).<br>2) **Sheet→Web (đọc Sheet vào app):** Cần **GOOGLE_SHEETS_POLL_MINUTES** > 0 để tự động mỗi N phút; nếu = 0 thì chỉ đồng bộ khi admin bấm «Đồng bộ» trong trang Admin.<br>3) **Cấu hình:** Đặt `GOOGLE_SHEETS_SPREADSHEET_ID`, `GOOGLE_SHEETS_CREDENTIALS_PATH=credentials/google-sheets.json` (file đặt trong `backend/credentials/`). Chia sẻ Google Sheet với email trong file JSON (client_email) quyền **Chỉnh sửa**. Tạo tab tên **Web** trong Sheet (hoặc đặt `GOOGLE_SHEETS_WEB_RANGE=Sheet1!A201:F500`).<br>4) Restart: `pm2 restart homestay-api`. |
 
+### Điền Google Sheet để chặn ngày trên web (lịch đặt phòng)
+
+- Dùng **tab được đọc bởi app** (mặc định là **Sheet1**, theo `GOOGLE_SHEETS_RANGE=Sheet1!A2:F500`). **Không** điền vào tab **Web** (tab Web do app ghi đơn từ web lên, sẽ bị ghi đè).
+- **Cột:** A = Phòng (tên phòng hoặc ID), B = Check-in, C = Check-out, D = status (`pending` hoặc `confirmed`), E, F = giờ bắt đầu/kết thúc (nếu đặt theo giờ).
+- **Ngày:** Có thể nhập **2026-04-29** hoặc **29-04-2026** (hoặc 29/04/2026). Sau khi đồng bộ, các ngày này sẽ bị chặn trên lịch đặt phòng web.
+- **Đồng bộ:** Đặt `GOOGLE_SHEETS_POLL_MINUTES=5` (hoặc số phút bất kỳ > 0) để app tự đọc Sheet mỗi N phút; hoặc vào **Admin → Đồng bộ Google Sheet** và bấm đồng bộ thủ công. Sau khi sync, lịch trên web sẽ hiển thị các ngày đã điền trong Sheet là đã đặt/chặn.
+
 ---
 
 ## Checklist deploy (soát lần cuối)

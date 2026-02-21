@@ -3250,6 +3250,7 @@ html.dark-mode .drawer-panel__locale {
   flex-wrap: wrap;
   gap: var(--space-3);
   align-items: center;
+  justify-content: space-between;
   margin-top: var(--space-2);
 }
 

@@ -115,10 +115,10 @@ export default function Profile() {
           </div>
           <p className="profile-form__hint muted">{t("profile.hint")}</p>
           <div className="profile-form__actions">
+            <Link className="btn btn-ghost" to="/">{t("common.back_to_home")}</Link>
             <button type="submit" className="btn" disabled={saving}>
               {saving ? t("common.loading") : t("profile.save")}
             </button>
-            <Link className="btn btn-ghost" to="/">{t("common.back_to_home")}</Link>
           </div>
         </form>
       </div>

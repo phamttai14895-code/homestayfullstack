@@ -251,8 +251,8 @@ nano /etc/nginx/sites-available/homestay
 ```nginx
 server {
     listen 80;
-    server_name yourdomain.com www.yourdomain.com;
-
+    server_name abcjqk.space www.abcjqk.space;
+    client_max_body_size 10M;
     root /var/www/homestayfullstack/frontend/dist;
     index index.html;
 
@@ -266,7 +266,7 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
     }
 
     location /auth/ {
@@ -275,13 +275,14 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
     }
 
     location /uploads/ {
         proxy_pass http://127.0.0.1:4000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
     }
 }
 ```

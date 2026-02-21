@@ -200,7 +200,9 @@
     "qr_alt": "Payment QR",
     "scan_qr_msg": "Scan QR to pay. System will confirm automatically.",
     "cash_title": "Cash payment",
-    "cash_status": "You will pay at check-in. Status:"
+    "cash_status": "You will pay at check-in. Status:",
+    "success_title": "Payment successful",
+    "success_msg": "Your booking has been confirmed. You will receive a confirmation email if configured."
   },
   "my_bookings": {
     "title": "My bookings",

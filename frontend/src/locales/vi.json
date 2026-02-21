@@ -200,7 +200,9 @@
     "qr_alt": "QR chuyển khoản",
     "scan_qr_msg": "Quét QR để chuyển khoản. Thanh toán xong hệ thống sẽ tự xác nhận.",
     "cash_title": "Thanh toán tiền mặt",
-    "cash_status": "Bạn sẽ thanh toán khi nhận phòng. Trạng thái:"
+    "cash_status": "Bạn sẽ thanh toán khi nhận phòng. Trạng thái:",
+    "success_title": "Thanh toán thành công",
+    "success_msg": "Đơn đặt phòng đã được xác nhận. Bạn sẽ nhận email chi tiết (nếu đã cấu hình)."
   },
   "my_bookings": {
     "title": "Đặt phòng của tôi",

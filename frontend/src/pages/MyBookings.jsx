@@ -296,9 +296,6 @@ export default function MyBookings() {
                   {b.has_review && (
                     <span className="muted" style={{ fontSize: 12 }}>{t("my_bookings.reviewed")}</span>
                   )}
-                  {b.payment_method === "sepay" && b.payment_status !== "paid" && remainder > 0 && (
-                    <Link className="btn btn-sm" to={`/payment/${b.id}`}>{t("payment.pay_remainder")}</Link>
-                  )}
                   {b.status === "confirmed" && !isPastCheckout(b) && (
                     <button
                       type="button"

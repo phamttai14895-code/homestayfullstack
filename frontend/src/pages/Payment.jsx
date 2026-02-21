@@ -25,6 +25,10 @@ export default function Payment() {
   const [secondsLeft, setSecondsLeft] = useState(null);
   const [countdownExpired, setCountdownExpired] = useState(false);
   const [endTimeMs, setEndTimeMs] = useState(null); // timestamp (ms) hết hạn, để timer chạy
+  const [checkinGuideOpen, setCheckinGuideOpen] = useState(false);
+
+  const phone = import.meta.env.VITE_CONTACT_PHONE || "0900000000";
+  const zaloLink = import.meta.env.VITE_ZALO_LINK || `https://zalo.me/${String(phone).replace(/\s+/g, "")}`;
 
   const load = useCallback(async () => {
     try {
@@ -105,6 +109,7 @@ export default function Payment() {
   const { booking, sepay } = data;
   const isPending = booking?.status === "pending" && booking?.payment_status !== "paid";
   const showCountdown = isPending && secondsLeft !== null;
+  const isPaymentSuccess = booking?.status === "confirmed" && (booking?.payment_status === "paid" || booking?.payment_status === "deposit_paid");
 
   return (
     <div className="container">
@@ -115,6 +120,44 @@ export default function Payment() {
         </div>
         <button className="btn btn-ghost" onClick={() => nav("/")}>{t("common.home")}</button>
       </div>
+
+      {isPaymentSuccess && (
+        <div className="card2 payment-success-block" role="status" aria-live="polite">
+          <div className="payment-success-check-wrap">
+            <svg className="payment-success-check-svg" viewBox="0 0 80 80" aria-hidden="true">
+              <circle className="payment-success-check-circle" cx="40" cy="40" r="36" strokeWidth="3" />
+              <path className="payment-success-check-mark" d="M22 40 L35 53 L58 28" strokeWidth="3" />
+            </svg>
+          </div>
+          <h2>{t("payment.success_title")}</h2>
+          <p className="payment-success-msg">{t("payment.success_msg")}</p>
+          <p className="muted" style={{ margin: "0 0 12px", fontSize: "0.9rem" }}>
+            {t("payment.booking_id")} #{booking.id} • {t("payment.code")} {booking.lookup_code}
+          </p>
+          <div className="row" style={{ justifyContent: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            <button type="button" className="btn" onClick={() => setCheckinGuideOpen(true)}>
+              {t("my_bookings.checkin_guide_btn")}
+            </button>
+            <button className="btn btn-ghost" onClick={() => nav("/booking-status")}>{t("common.search_booking")}</button>
+            <button className="btn btn-ghost" onClick={() => nav("/my-bookings")}>{t("common.my_bookings")}</button>
+          </div>
+        </div>
+      )}
+
+      {checkinGuideOpen && (
+        <div className="checkin-guide-overlay" onClick={() => setCheckinGuideOpen(false)}>
+          <div className="checkin-guide-modal card2" onClick={(e) => e.stopPropagation()}>
+            <h3 className="checkin-guide-modal__title">{t("my_bookings.checkin_guide_modal_title")}</h3>
+            <p className="checkin-guide-modal__desc muted">{t("my_bookings.checkin_guide_content")}</p>
+            <a href={zaloLink} target="_blank" rel="noreferrer" className="checkin-guide-modal__zalo btn">
+              {t("my_bookings.checkin_guide_zalo_label")}
+            </a>
+            <div className="checkin-guide-modal__actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setCheckinGuideOpen(false)}>{t("common.close")}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {booking?.status === "canceled" && (
         <div className="card2 payment-expired" style={{ marginTop: 12, borderColor: "var(--danger, #dc2626)", background: "rgba(220, 38, 38, 0.08)" }}>
@@ -129,6 +172,7 @@ export default function Payment() {
 
       {booking?.status !== "canceled" && (
       <>
+      {!isPaymentSuccess && (
       <div className="card2" style={{ marginTop: 12 }}>
         <div><b>{t("payment.booking_id")}</b> #{booking.id}</div>
         <div><b>{t("payment.code")}</b> {booking.lookup_code}</div>
@@ -141,8 +185,9 @@ export default function Payment() {
           </>
         )}
       </div>
+      )}
 
-      {sepay ? (
+      {!isPaymentSuccess && sepay ? (
         <div className="card2 payment-sepay-card" style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 900 }}>
             {booking?.payment_status === "deposit_paid" && sepay.remainder_amount > 0
@@ -188,7 +233,7 @@ export default function Payment() {
             </div>
           )}
         </div>
-      ) : (
+      ) : !isPaymentSuccess ? (
         <div className="card2" style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 900 }}>{t("payment.cash_title")}</div>
           {showCountdown && (
@@ -204,12 +249,14 @@ export default function Payment() {
             {t("payment.cash_status")} <b>{t(booking?.payment_status === "paid" ? "labels.payment_status_paid" : "labels.payment_status_unpaid")}</b>
           </div>
         </div>
-      )}
+      ) : null}
 
+      {!isPaymentSuccess && (
       <div className="row" style={{ marginTop: 16, gap: 8 }}>
         <button className="btn btn-ghost" onClick={() => nav("/booking-status")}>{t("common.search_booking")}</button>
         <button className="btn" onClick={() => nav("/my-bookings")}>{t("common.my_bookings")}</button>
       </div>
+      )}
       </>
       )}
     </div>

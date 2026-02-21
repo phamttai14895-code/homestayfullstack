@@ -14,6 +14,14 @@ export function getMailTransport() {
   });
 }
 
+/** Log lỗi gửi email đầy đủ để debug (pm2 logs). */
+function logEmailError(label, to, err) {
+  const msg = err?.message || String(err);
+  const code = err?.code;
+  const response = err?.response;
+  console.error(`[Email] ${label} failed → to: ${to} | ${msg}${code ? ` | code: ${code}` : ""}${response ? ` | response: ${String(response).slice(0, 200)}` : ""}`);
+}
+
 export function getBookingWithRoom(bookingId) {
   const b = db.prepare(`
     SELECT b.*, r.name AS room_name, r.location AS room_location
@@ -52,7 +60,9 @@ export function sendVerificationEmail(email, name, verifyUrl) {
     to: email,
     subject: "[Homestay] Xác nhận địa chỉ email",
     html
-  }).catch((err) => console.error("[Email] sendVerificationEmail failed:", err?.message || err));
+  })
+    .then(() => console.log("[Email] sendVerificationEmail sent →", email))
+    .catch((err) => logEmailError("sendVerificationEmail", email, err));
 }
 
 /** Gửi email xác nhận đặt phòng + link Zalo OA. Gọi bất đồng bộ. */
@@ -111,7 +121,9 @@ export function sendBookingConfirmationEmail(bookingId) {
     to: b.email,
     subject: `[Homestay] Xác nhận đặt phòng ${b.lookup_code}`,
     html
-  }).catch((err) => console.error("[Email] sendBookingConfirmation failed:", err?.message || err));
+  })
+    .then(() => console.log("[Email] sendBookingConfirmation sent →", b.email))
+    .catch((err) => logEmailError("sendBookingConfirmation", b.email, err));
 }
 
 export function getAdminNotifyEmails() {
@@ -158,7 +170,14 @@ export function notifyAdminNewBooking(bookingId) {
 
   const transport = getMailTransport();
   const adminEmails = getAdminNotifyEmails();
-  if (!transport || !adminEmails.length) return;
+  if (!transport) {
+    console.warn("[Email] notifyAdminNewBooking: bỏ qua vì chưa cấu hình SMTP (SMTP_HOST, SMTP_USER). Đặt trong .env để nhận email đơn mới.");
+    return;
+  }
+  if (!adminEmails.length) {
+    console.warn("[Email] notifyAdminNewBooking: bỏ qua vì chưa có ADMIN_NOTIFY_EMAILS (hoặc ADMIN_EMAILS). Đặt trong .env, ví dụ: ADMIN_NOTIFY_EMAILS=admin@example.com");
+    return;
+  }
 
   const dashboardUrl = (process.env.ADMIN_DASHBOARD_URL || process.env.FRONTEND_ORIGIN || "").replace(/\/$/, "") + "/admin";
   const html = `
@@ -184,10 +203,13 @@ export function notifyAdminNewBooking(bookingId) {
   `.trim();
 
   const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@homestay";
+  const toList = adminEmails.join(", ");
   transport.sendMail({
     from: fromAddr,
-    to: adminEmails.join(", "),
+    to: toList,
     subject: `[Homestay] Đơn đặt phòng mới #${b.id} - ${b.lookup_code}`,
     html
-  }).catch((err) => console.error("[Email] notifyAdminNewBooking failed:", err?.message || err));
+  })
+    .then(() => console.log("[Email] notifyAdminNewBooking sent →", toList))
+    .catch((err) => logEmailError("notifyAdminNewBooking", toList, err));
 }

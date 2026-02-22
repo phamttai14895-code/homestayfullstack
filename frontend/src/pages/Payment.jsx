@@ -110,7 +110,8 @@ export default function Payment() {
   const displayPaymentStatus = getDisplayPaymentStatus(booking);
   const isPending = booking?.status === "pending" && displayPaymentStatus !== "paid";
   const showCountdown = isPending && secondsLeft !== null;
-  const isPaymentSuccess = booking?.status === "confirmed" && (displayPaymentStatus === "paid" || displayPaymentStatus === "deposit_paid");
+  const hasPaidDepositOrFull = displayPaymentStatus === "paid" || displayPaymentStatus === "deposit_paid";
+  const isPaymentSuccess = hasPaidDepositOrFull && (booking?.status === "confirmed" || booking?.status === "pending");
 
   return (
     <div className="container">

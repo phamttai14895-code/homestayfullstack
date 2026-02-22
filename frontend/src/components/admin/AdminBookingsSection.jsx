@@ -6,6 +6,13 @@ import {
   fetchRoomReviews,
   BASE,
 } from "../../api";
+import {
+  bookingStatusLabel,
+  bookingStatusClass,
+  paymentStatusLabel,
+  paymentStatusClass,
+  paymentMethodLabel,
+} from "../../utils/labels";
 import AdminReviewCard from "./AdminReviewCard.jsx";
 import AdminBookingRow from "./AdminBookingRow.jsx";
 
@@ -20,6 +27,9 @@ export default function AdminBookingsSection({
   statusChips,
   statusChip,
   setStatusChip,
+  sourceChips,
+  sourceChip,
+  setSourceChip,
   bookingPagination,
   setBookingPage,
   BOOKING_PAGE_SIZE,
@@ -46,6 +56,7 @@ export default function AdminBookingsSection({
 }) {
   const [sheetSyncLoading, setSheetSyncLoading] = useState(false);
   const [sheetSyncMsg, setSheetSyncMsg] = useState("");
+  const [detailBooking, setDetailBooking] = useState(null);
 
   const handleSyncSheet = async () => {
     setSheetSyncMsg("");
@@ -67,25 +78,23 @@ export default function AdminBookingsSection({
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
-        <div className="section-title">Booking</div>
-        <div className="row">
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            disabled={sheetSyncLoading}
-            onClick={handleSyncSheet}
-          >
-            {sheetSyncLoading ? "Đang đồng bộ…" : "Đồng bộ Google Sheet"}
-          </button>
-        </div>
+      <div className="admin-booking-header">
+        <h2 className="admin-booking-title">Booking</h2>
+        <button
+          type="button"
+          className="btn btn-sm admin-booking-sync-btn"
+          disabled={sheetSyncLoading}
+          onClick={handleSyncSheet}
+        >
+          {sheetSyncLoading ? "Đang đồng bộ…" : "Đồng bộ Google Sheet"}
+        </button>
       </div>
       {sheetSyncMsg && (
-        <div className="muted" style={{ marginBottom: 8, fontSize: 13 }}>{sheetSyncMsg}</div>
+        <div className="admin-booking-sync-msg muted">{sheetSyncMsg}</div>
       )}
 
-      <div className="admin-booking-filters">
-        <div className="searchbar" style={{ marginTop: 0, flex: "1 1 200px" }}>
+      <div className="admin-booking-filters card2">
+        <div className="searchbar">
           <span>🔎</span>
           <input
             value={q}
@@ -95,14 +104,29 @@ export default function AdminBookingsSection({
           />
           <span className="count">{bookings.length}</span>
         </div>
-        <div className="admin-booking-chips">
+        <div className="admin-booking-chips admin-booking-chips--status">
+          <span className="admin-booking-chips-label muted">Trạng thái:</span>
           {statusChips.map((s) => (
             <button
               key={s.key}
               type="button"
-              className={`chip ${statusChip === s.key ? "on" : ""}`}
+              className={`chip ${statusChip === s.key ? "on" : ""} ${statusChip === s.key && s.key ? `chip--${s.key}` : ""}`}
               onClick={() => setStatusChip(s.key)}
               aria-pressed={statusChip === s.key}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <div className="admin-booking-chips admin-booking-chips--source">
+          <span className="admin-booking-chips-label muted">Nguồn:</span>
+          {sourceChips.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              className={`chip ${sourceChip === s.key ? "on" : ""}`}
+              onClick={() => setSourceChip(s.key)}
+              aria-pressed={sourceChip === s.key}
             >
               {s.label}
             </button>
@@ -219,7 +243,7 @@ export default function AdminBookingsSection({
         </div>
       )}
 
-      <div className="card2 bulkbar" style={{ marginTop: 12 }}>
+      <div className="admin-booking-bulkbar card2 bulkbar">
         <div className="bulk-left">
           <label className="bulk-check">
             <input
@@ -247,7 +271,7 @@ export default function AdminBookingsSection({
       </div>
 
       {bookings.length > BOOKING_PAGE_SIZE && (
-        <div className="admin-booking-pagination" style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div className="admin-booking-pagination">
           <span className="muted">
             Đơn <b>{bookingPagination.start + 1}</b>–<b>{bookingPagination.start + bookingPagination.pageItems.length}</b> / {bookings.length}
           </span>
@@ -277,7 +301,7 @@ export default function AdminBookingsSection({
         </div>
       )}
 
-      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+      <div className="admin-booking-list">
         {bookingPagination.pageItems.map((b, i) => {
           const idx = bookingPagination.start + i;
           return (
@@ -286,9 +310,7 @@ export default function AdminBookingsSection({
               booking={b}
               isSelected={isSelected(b.id)}
               onToggleSelect={(e) => toggleOne(b.id, idx, e)}
-              onStatusChange={setBStatus}
-              onDelete={deleteSinglePro}
-              onMarkPaid={markPaid}
+              onShowDetail={(bk) => setDetailBooking(bk)}
             />
           );
         })}
@@ -296,6 +318,59 @@ export default function AdminBookingsSection({
           <div className="muted">Chưa có booking (hoặc filter không có kết quả).</div>
         )}
       </div>
+
+      {detailBooking && (
+        <div
+          className="admin-booking-detail-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="booking-detail-title"
+          onClick={() => setDetailBooking(null)}
+        >
+          <div
+            className="admin-booking-detail-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-booking-detail-header">
+              <h2 id="booking-detail-title">Chi tiết đơn #{detailBooking.id}</h2>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDetailBooking(null)}>
+                Đóng
+              </button>
+            </div>
+            <div className="admin-booking-detail-body">
+              <div className="admin-booking-detail-grid">
+                <div><span className="muted">Mã đơn:</span> <b>{detailBooking.lookup_code}</b></div>
+                <div><span className="muted">Nguồn:</span> {detailBooking.source === "google_sheet" ? "Google Sheet" : "Web"}</div>
+                <div><span className="muted">Phòng:</span> {detailBooking.room_name}</div>
+                <div><span className="muted">Loại đặt:</span> {detailBooking.booking_type === "hourly" ? "Theo giờ" : "Qua đêm"}</div>
+                <div><span className="muted">Họ tên:</span> {detailBooking.full_name}</div>
+                <div><span className="muted">SĐT:</span> {detailBooking.phone}</div>
+                <div><span className="muted">Email:</span> {detailBooking.email || "—"}</div>
+                <div><span className="muted">Check-in:</span> {detailBooking.check_in} {detailBooking.check_in_time ? `(${detailBooking.check_in_time})` : ""}</div>
+                <div><span className="muted">Check-out:</span> {detailBooking.check_out} {detailBooking.check_out_time ? `(${detailBooking.check_out_time})` : ""}</div>
+                <div><span className="muted">Số khách:</span> {detailBooking.guests}</div>
+                <div><span className="muted">Ghi chú:</span> {detailBooking.note || "—"}</div>
+                <div><span className="muted">Tổng tiền:</span> <b>{Number(detailBooking.total_amount || 0).toLocaleString()} ₫</b></div>
+                <div><span className="muted">Đã thanh toán:</span> {Number(detailBooking.paid_amount || 0).toLocaleString()} ₫</div>
+                <div><span className="muted">Thanh toán:</span> {paymentMethodLabel(detailBooking.payment_method)}</div>
+                <div><span className="muted">Trạng thái thanh toán:</span> <span className={paymentStatusClass(detailBooking.payment_status)}>{paymentStatusLabel(detailBooking.payment_status)}</span></div>
+                <div><span className="muted">Trạng thái đơn:</span> <span className={bookingStatusClass(detailBooking.status)}>{bookingStatusLabel(detailBooking.status)}</span></div>
+              </div>
+            </div>
+            <div className="admin-booking-detail-actions">
+              <button className="btn btn-ghost btn-sm" type="button" onClick={() => { setBStatus(detailBooking.id, "pending"); setDetailBooking(null); }}>Đang chờ</button>
+              {detailBooking.payment_method === "cash" && (
+                <button className="btn btn-ghost btn-sm" type="button" onClick={() => { setBStatus(detailBooking.id, "confirmed"); setDetailBooking(null); }}>Xác nhận</button>
+              )}
+              <button className="btn btn-ghost btn-sm" type="button" onClick={() => { setBStatus(detailBooking.id, "canceled"); setDetailBooking(null); }}>Hủy</button>
+              {detailBooking.payment_method === "cash" && (
+                <button className="btn btn-ghost btn-sm" type="button" onClick={() => { markPaid(detailBooking); setDetailBooking(null); }}>Đánh dấu thanh toán</button>
+              )}
+              <button className="btn danger btn-sm" type="button" onClick={() => { deleteSinglePro(detailBooking.id); setDetailBooking(null); }}>Xóa</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

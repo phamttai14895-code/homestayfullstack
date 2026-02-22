@@ -11,7 +11,7 @@ import path from "path";
 import { createRequire } from "module";
 
 import { PORT, FRONTEND, sessionSecret } from "./config.js";
-import { db, parseJsonArray, decorateRoom } from "./db.js";
+import { db, hasColumn, parseJsonArray, decorateRoom } from "./db.js";
 import { requireAdmin, isAdminEmail } from "./middleware.js";
 import { cleanupExpiredSepay, onlyUploads, parseISODate, toDDMMYYYY } from "./helpers.js";
 import { isCloudinaryConfigured, uploadBuffer, deleteByPublicId, getPublicIdFromUrl } from "./services/cloudinary.js";
@@ -484,6 +484,7 @@ app.get("/api/admin/bookings", requireAdmin, (req, res) => {
   cleanupExpiredSepay();
   const q = String(req.query.q || "").trim();
   const status = String(req.query.status || "all").trim();
+  const source = String(req.query.source || "all").trim();
 
   let where = "1=1";
   const params = [];
@@ -491,6 +492,14 @@ app.get("/api/admin/bookings", requireAdmin, (req, res) => {
   if (status !== "all") {
     where += " AND b.status=?";
     params.push(status);
+  }
+
+  if (source === "web" || source === "google_sheet") {
+    if (hasColumn(db, "bookings", "source")) {
+      where += source === "web"
+        ? " AND (COALESCE(b.source,'web')='web')"
+        : " AND b.source='google_sheet'";
+    }
   }
 
   if (q) {
@@ -619,35 +628,29 @@ app.post("/api/admin/sync-google-sheet", requireAdmin, (req, res) => {
 });
 
 /* =========================
-   ADMIN: Thống kê & Doanh thu (?month=YYYY-MM để xem theo tháng)
+   ADMIN: Thống kê & Doanh thu (?from=YYYY-MM-DD&to=YYYY-MM-DD để chọn khoảng thời gian)
 ========================= */
 app.get("/api/admin/stats", requireAdmin, (req, res) => {
-  const monthParam = String(req.query.month || "").trim();
+  const fromParam = String(req.query.from || "").trim();
+  const toParam = String(req.query.to || "").trim();
   const now = new Date();
-  let periodStart, periodEnd, byMonth;
+  let periodStart, periodEnd;
 
-  if (/^\d{4}-\d{2}$/.test(monthParam)) {
-    byMonth = true;
-    periodStart = `${monthParam}-01`;
-    const [y, m] = monthParam.split("-").map(Number);
-    const lastDay = new Date(y, m, 0).getDate();
-    periodEnd = `${monthParam}-${String(lastDay).padStart(2, "0")}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fromParam) && /^\d{4}-\d{2}-\d{2}$/.test(toParam) && fromParam <= toParam) {
+    periodStart = fromParam;
+    periodEnd = toParam;
   } else {
-    byMonth = false;
-    const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-    periodStart = twelveMonthsAgo.toISOString().slice(0, 10);
+    const twelveWeeksAgo = new Date(now);
+    twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
+    periodStart = twelveWeeksAgo.toISOString().slice(0, 10);
     periodEnd = now.toISOString().slice(0, 10);
   }
 
-  const totalBookings = byMonth
-    ? db.prepare(`SELECT COUNT(*) AS n FROM bookings WHERE date(check_in) >= ? AND date(check_in) <= ?`).get(periodStart, periodEnd)
-    : db.prepare(`SELECT COUNT(*) AS n FROM bookings`).get();
+  const totalBookings = db.prepare(`SELECT COUNT(*) AS n FROM bookings WHERE date(check_in) >= ? AND date(check_in) <= ?`).get(periodStart, periodEnd);
 
   const rooms = db.prepare(`SELECT id FROM rooms`).all();
   const numRooms = rooms.length;
-  const daysInPeriod = byMonth
-    ? Math.ceil((new Date(periodEnd) - new Date(periodStart)) / 86400000) + 1
-    : Math.ceil((now - new Date(periodStart)) / 86400000) || 1;
+  const daysInPeriod = Math.ceil((new Date(periodEnd) - new Date(periodStart)) / 86400000) + 1;
   const maxRoomNights = numRooms * daysInPeriod;
 
   const bookingsInPeriod = db.prepare(`
@@ -679,58 +682,38 @@ app.get("/api/admin/stats", requireAdmin, (req, res) => {
   }
   const occupancyRate = maxRoomNights > 0 ? Math.round((totalRoomNights / maxRoomNights) * 10000) / 100 : 0;
 
-  let revenueByMonth, revenueByDay;
-  if (byMonth) {
-    const dayRows = db.prepare(`
-      SELECT
-        check_in AS date_iso,
-        SUM(CAST(paid_amount AS INTEGER)) AS revenue,
-        COUNT(*) AS count
-      FROM bookings
-      WHERE status IN ('confirmed') AND date(check_in) >= ? AND date(check_in) <= ?
-      GROUP BY date(check_in)
-      ORDER BY date(check_in) ASC
-    `).all(periodStart, periodEnd);
-    revenueByDay = dayRows.map((r) => ({
-      date: toDDMMYYYY(r.date_iso),
-      date_iso: r.date_iso,
-      revenue: Number(r.revenue || 0),
-      count: Number(r.count || 0)
-    }));
-    revenueByMonth = [{
-      month: monthParam,
-      monthLabel: toDDMMYYYY(periodStart) + " - " + toDDMMYYYY(periodEnd),
-      revenue: revenueByDay.reduce((a, d) => a + d.revenue, 0),
-      count: revenueByDay.reduce((a, d) => a + d.count, 0)
-    }];
-  } else {
-    const revenueRows = db.prepare(`
-      SELECT
-        strftime('%Y-%m', check_in) AS month,
-        SUM(CAST(paid_amount AS INTEGER)) AS revenue,
-        COUNT(*) AS count
-      FROM bookings
-      WHERE status IN ('confirmed') AND date(check_in) >= ? AND date(check_in) <= ?
-      GROUP BY strftime('%Y-%m', check_in)
-      ORDER BY month ASC
-    `).all(periodStart, periodEnd);
-    revenueByMonth = revenueRows.map((r) => ({
-      month: r.month,
-      monthLabel: toDDMMYYYY(r.month + "-01"),
-      revenue: Number(r.revenue || 0),
-      count: Number(r.count || 0)
-    }));
-    revenueByDay = null;
+  // Doanh thu theo tuần (tuần bắt đầu thứ Hai)
+  const weekRows = db.prepare(`
+    SELECT
+      date(check_in, 'weekday 0', '-6 days') AS week_start,
+      SUM(CAST(total_amount AS INTEGER)) AS revenue,
+      COUNT(*) AS count
+    FROM bookings
+    WHERE status IN ('confirmed') AND date(check_in) >= ? AND date(check_in) <= ?
+    GROUP BY date(check_in, 'weekday 0', '-6 days')
+    ORDER BY week_start ASC
+  `).all(periodStart, periodEnd);
+
+  function weekEndDate(weekStart) {
+    const d = new Date(weekStart + "T12:00:00Z");
+    d.setDate(d.getDate() + 6);
+    return d.toISOString().slice(0, 10);
   }
 
-  const totalRevenue = revenueByMonth.reduce((a, r) => a + r.revenue, 0);
+  const revenueByWeek = weekRows.map((r) => ({
+    weekStart: r.week_start,
+    weekEnd: weekEndDate(r.week_start),
+    weekLabel: toDDMMYYYY(r.week_start) + " – " + toDDMMYYYY(weekEndDate(r.week_start)),
+    revenue: Number(r.revenue || 0),
+    count: Number(r.count || 0)
+  }));
+
+  const totalRevenue = revenueByWeek.reduce((a, r) => a + r.revenue, 0);
 
   res.json({
-    byMonth: !!byMonth,
     totalBookings: Number(totalBookings?.n || 0),
     totalRevenue,
-    revenueByMonth,
-    revenueByDay: revenueByDay || undefined,
+    revenueByWeek,
     occupancyRate,
     totalRoomNights: Math.round(totalRoomNights * 10) / 10,
     maxRoomNights,

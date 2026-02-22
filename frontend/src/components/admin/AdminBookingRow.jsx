@@ -14,68 +14,53 @@ export default function AdminBookingRow({
   booking: b,
   isSelected,
   onToggleSelect,
-  onStatusChange,
-  onDelete,
-  onMarkPaid
+  onShowDetail
 }) {
-  return (
-    <div className={`card2 ${isSelected ? "selected" : ""}`}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={onToggleSelect}
-            style={{ marginTop: 6 }}
-          />
+  const sourceLabel = b.source === "google_sheet" ? "Google Sheet" : "Web";
+  const dateStr = b.booking_type === "hourly"
+    ? `${b.check_in} ${b.check_in_time || ""}–${b.check_out_time || ""}`
+    : `${b.check_in} → ${b.check_out}`;
 
-          <div>
-            <b>#{b.id}</b> • <span className="badge">{b.lookup_code}</span> • <b>{b.full_name}</b> • {b.phone}
-            <div className="muted">
-              {b.room_name} •{" "}
-              {b.booking_type === "hourly"
-                ? `${b.check_in} ${b.check_in_time || ""}-${b.check_out_time || ""}`
-                : `${b.check_in} → ${b.check_out}`}{" "}
-              • {b.guests} khách
+  return (
+    <div className={`admin-booking-card ${isSelected ? "selected" : ""}`}>
+      <div className="admin-booking-card__inner">
+        <label className="admin-booking-card__check" onClick={(e) => e.stopPropagation()}>
+          <input type="checkbox" checked={isSelected} onChange={onToggleSelect} />
+        </label>
+
+        <div
+          className="admin-booking-card__main"
+          role="button"
+          tabIndex={0}
+          onClick={() => onShowDetail?.(b)}
+          onKeyDown={(e) => e.key === "Enter" && onShowDetail?.(b)}
+        >
+          <div className="admin-booking-card__head">
+            <span className="admin-booking-card__id">#{b.id}</span>
+            <span className="admin-booking-card__code">{b.lookup_code}</span>
+            <span className={`admin-booking-card__source admin-booking-card__source--${b.source === "google_sheet" ? "sheet" : "web"}`}>
+              {sourceLabel}
+            </span>
+            <span className={`admin-booking-card__status ${bookingStatusClass(b.status)}`}>
+              {bookingStatusLabel(b.status)}
+            </span>
+          </div>
+          <div className="admin-booking-card__info">
+            <div className="admin-booking-card__line">
+              <strong>{b.full_name}</strong>
+              <span>{b.phone}</span>
             </div>
-            <div className="muted" style={{ marginTop: 4 }}>
-              Thanh toán: <b>{paymentMethodLabel(b.payment_method)}</b> • Trạng thái:{" "}
+            <div className="admin-booking-card__line muted">
+              {b.room_name} · {dateStr} · {b.guests} khách
+            </div>
+            <div className="admin-booking-card__line muted">
+              {paymentMethodLabel(b.payment_method)} ·{" "}
               <span className={paymentStatusClass(b.payment_status)}>{paymentStatusLabel(b.payment_status)}</span>
             </div>
+            {onShowDetail && (
+              <span className="admin-booking-card__hint">Xem chi tiết</span>
+            )}
           </div>
-        </div>
-
-        <div className="badges">
-          <span className={bookingStatusClass(b.status)}>{bookingStatusLabel(b.status)}</span>
-
-          <button className="btn btn-ghost btn-sm" type="button" onClick={() => onStatusChange(b.id, "pending")}>
-            Đang chờ
-          </button>
-
-          {b.payment_method === "cash" && (
-            <button className="btn btn-ghost btn-sm" type="button" onClick={() => onStatusChange(b.id, "confirmed")}>
-              Xác nhận
-            </button>
-          )}
-
-          <button className="btn btn-ghost btn-sm" type="button" onClick={() => onStatusChange(b.id, "canceled")}>
-            Hủy
-          </button>
-
-          <button
-            className="btn danger btn-sm"
-            type="button"
-            onClick={() => onDelete(b.id)}
-            title="Xóa (có thể hoàn tác trong 8 giây)"
-          >
-            Xóa
-          </button>
-
-          {b.payment_method === "cash" && (
-            <button className="btn btn-ghost btn-sm" type="button" onClick={() => onMarkPaid(b)}>
-              Đánh dấu thanh toán
-            </button>
-          )}
         </div>
       </div>
     </div>

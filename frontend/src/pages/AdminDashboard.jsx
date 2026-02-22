@@ -163,6 +163,9 @@ export default function AdminDashboard() {
             statusChips={bookings.statusChips}
             statusChip={bookings.statusChip}
             setStatusChip={bookings.setStatusChip}
+            sourceChips={bookings.sourceChips}
+            sourceChip={bookings.sourceChip}
+            setSourceChip={bookings.setSourceChip}
             bookingPagination={bookings.bookingPagination}
             setBookingPage={bookings.setBookingPage}
             BOOKING_PAGE_SIZE={bookings.BOOKING_PAGE_SIZE}

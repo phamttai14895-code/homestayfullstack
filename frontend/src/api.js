@@ -242,8 +242,8 @@ export async function adminDeleteImage(roomId, url) {
 }
 
 /* admin bookings */
-export async function adminBookings({ q = "", status = "all" } = {}) {
-  const qs = new URLSearchParams({ q, status }).toString();
+export async function adminBookings({ q = "", status = "all", source = "all" } = {}) {
+  const qs = new URLSearchParams({ q, status, source }).toString();
   return j(await fetch(`${BASE}/api/admin/bookings?${qs}`, { credentials: "include" }));
 }
 export async function adminSetBookingStatus(id, status) {
@@ -276,7 +276,10 @@ export async function adminSyncGoogleSheet() {
   }));
 }
 
-export async function fetchAdminStats(month) {
-  const qs = month && /^\d{4}-\d{2}$/.test(month) ? `?month=${encodeURIComponent(month)}` : "";
+export async function fetchAdminStats(from, to) {
+  let qs = "";
+  if (from && /^\d{4}-\d{2}-\d{2}$/.test(from) && to && /^\d{4}-\d{2}-\d{2}$/.test(to) && from <= to) {
+    qs = `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  }
   return j(await fetch(`${BASE}/api/admin/stats${qs}`, { credentials: "include" }));
 }

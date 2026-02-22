@@ -18,6 +18,7 @@ export function useAdminBookings() {
   const [bank, setBank] = useState(null);
   const [q, setQ] = useState("");
   const [statusChip, setStatusChip] = useState("");
+  const [sourceChip, setSourceChip] = useState("");
   const dq = useDebounced(q, 350);
   const [bookingPage, setBookingPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -30,23 +31,23 @@ export function useAdminBookings() {
 
   const loadBookings = useCallback(async () => {
     try {
-      const d = await adminBookings({ q: dq, status: statusChip });
+      const d = await adminBookings({ q: dq, status: statusChip, source: sourceChip });
       setBookings(d.bookings || []);
       setBank(d.bank || null);
     } catch {
       // ignore if not admin
     }
-  }, [dq, statusChip]);
+  }, [dq, statusChip, sourceChip]);
 
   const reloadBookings = useCallback(async () => {
-    const res = await adminBookings({ q: dq, status: statusChip });
+    const res = await adminBookings({ q: dq, status: statusChip, source: sourceChip });
     setBookings(res.bookings || []);
     setBank(res.bank || null);
-  }, [dq, statusChip]);
+  }, [dq, statusChip, sourceChip]);
 
   useEffect(() => {
     setBookingPage(1);
-  }, [dq, statusChip, bookings.length]);
+  }, [dq, statusChip, sourceChip, bookings.length]);
 
   useEffect(() => {
     if (!undoState) return;
@@ -243,6 +244,12 @@ export function useAdminBookings() {
     { key: "canceled", label: "Đã hủy" },
   ];
 
+  const sourceChips = [
+    { key: "", label: "Tất cả" },
+    { key: "web", label: "Đơn web" },
+    { key: "google_sheet", label: "Đơn Google Sheet" },
+  ];
+
   return {
     bookings,
     bank,
@@ -251,6 +258,9 @@ export function useAdminBookings() {
     statusChip,
     setStatusChip,
     statusChips,
+    sourceChip,
+    setSourceChip,
+    sourceChips,
     bookingPagination,
     bookingPage,
     setBookingPage,

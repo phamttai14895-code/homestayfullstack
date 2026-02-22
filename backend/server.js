@@ -647,7 +647,11 @@ app.get("/api/admin/stats", requireAdmin, (req, res) => {
     periodEnd = now.toISOString().slice(0, 10);
   }
 
-  const totalBookings = db.prepare(`SELECT COUNT(*) AS n FROM bookings WHERE date(check_in) >= ? AND date(check_in) <= ?`).get(periodStart, periodEnd);
+  const totalBookings = db.prepare(`
+    SELECT COUNT(*) AS n FROM bookings
+    WHERE status = 'confirmed'
+    AND date(check_in) >= ? AND date(check_in) <= ?
+  `).get(periodStart, periodEnd);
 
   const rooms = db.prepare(`SELECT id FROM rooms`).all();
   const numRooms = rooms.length;
@@ -683,14 +687,14 @@ app.get("/api/admin/stats", requireAdmin, (req, res) => {
   }
   const occupancyRate = maxRoomNights > 0 ? Math.round((totalRoomNights / maxRoomNights) * 10000) / 100 : 0;
 
-  // Doanh thu theo tuần (tuần bắt đầu thứ Hai)
+  // Doanh thu theo tuần (tuần bắt đầu thứ Hai) - dùng total_amount (tổng giá trị đơn)
   const weekRows = db.prepare(`
     SELECT
       date(check_in, 'weekday 0', '-6 days') AS week_start,
       SUM(CAST(total_amount AS INTEGER)) AS revenue,
       COUNT(*) AS count
     FROM bookings
-    WHERE status IN ('confirmed') AND date(check_in) >= ? AND date(check_in) <= ?
+    WHERE status = 'confirmed' AND date(check_in) >= ? AND date(check_in) <= ?
     GROUP BY date(check_in, 'weekday 0', '-6 days')
     ORDER BY week_start ASC
   `).all(periodStart, periodEnd);

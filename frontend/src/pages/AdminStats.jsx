@@ -12,13 +12,21 @@ function formatDDMMYYYY(iso) {
   return `${d}-${m}-${y}`;
 }
 
+/** Format Date sang YYYY-MM-DD dùng múi giờ local (tránh lỗi timezone). */
+function toLocalYYYYMMDD(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 /** Lấy thứ Hai của tuần chứa ngày d. */
 function getMondayOfWeek(d) {
   const date = new Date(d);
   const day = date.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   date.setDate(date.getDate() + diff);
-  return date.toISOString().slice(0, 10);
+  return toLocalYYYYMMDD(date);
 }
 
 /** Lấy Chủ Nhật của tuần chứa ngày d. */
@@ -27,7 +35,7 @@ function getSundayOfWeek(d) {
   const day = date.getDay();
   const diff = day === 0 ? 0 : 7 - day;
   date.setDate(date.getDate() + diff);
-  return date.toISOString().slice(0, 10);
+  return toLocalYYYYMMDD(date);
 }
 
 const PRESETS = {
@@ -35,7 +43,7 @@ const PRESETS = {
   last_week: (now) => {
     const lastMon = new Date(now); lastMon.setDate(lastMon.getDate() - 7);
     const lastSun = new Date(lastMon); lastSun.setDate(lastSun.getDate() + 6);
-    return { from: lastMon.toISOString().slice(0, 10), to: lastSun.toISOString().slice(0, 10) };
+    return { from: toLocalYYYYMMDD(lastMon), to: toLocalYYYYMMDD(lastSun) };
   },
   "4_weeks": (now) => {
     const from = new Date(now); from.setDate(from.getDate() - 27);

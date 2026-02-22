@@ -203,7 +203,8 @@ router.post("/bookings", bookingCreateLimiter, requireLogin, (req, res) => {
 });
 
 router.get("/bookings/:id/payment", requireLogin, (req, res) => {
-  cleanupExpiredSepay();
+  const expiredCount = cleanupExpiredSepay();
+  if (expiredCount > 0) schedulePushToGoogleSheet();
   const id = Number(req.params.id);
   const b = db.prepare(`SELECT * FROM bookings WHERE id=?`).get(id);
   if (!b) return res.status(404).json({ error: "NOT_FOUND" });
@@ -227,6 +228,7 @@ router.get("/bookings/:id/payment", requireLogin, (req, res) => {
 
   if (b.status === "pending" && b.payment_status !== "paid" && expiredAt && new Date(expiredAt) <= now) {
     db.prepare(`UPDATE bookings SET status='canceled' WHERE id=?`).run(id);
+    schedulePushToGoogleSheet();
     const updated = db.prepare(`SELECT * FROM bookings WHERE id=?`).get(id);
     if (updated) {
       return res.json({

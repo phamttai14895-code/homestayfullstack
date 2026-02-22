@@ -90,14 +90,15 @@ export function randomCode(len = 6) {
   return s;
 }
 
-/** Hủy đơn pending hết hạn thanh toán (SePay/expires_at). */
+/** Hủy đơn pending hết hạn thanh toán (SePay/expires_at). Trả về số đơn đã hủy. */
 export function cleanupExpiredSepay() {
   const now = new Date().toISOString();
-  db.prepare(`
+  const result = db.prepare(`
     UPDATE bookings SET status='canceled'
     WHERE status='pending' AND payment_status != 'paid'
     AND (sepay_expired_at IS NOT NULL AND sepay_expired_at <= ?)
   `).run(now);
+  return result.changes ?? 0;
 }
 
 /** Kiểm tra URL có phải từ upload hợp lệ không (/uploads/ hoặc Cloudinary). */

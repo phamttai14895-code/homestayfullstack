@@ -18,7 +18,7 @@ import { isCloudinaryConfigured, uploadBuffer, deleteByPublicId, getPublicIdFrom
 import { getSepayBankInfo } from "./services/sepay.js";
 import { sendBookingConfirmationEmail } from "./services/email.js";
 import Database from "better-sqlite3";
-import { syncGoogleSheetToBookings, schedulePushToGoogleSheet } from "./services/googleSheet.js";
+import { syncGoogleSheetToBookings, pushBookingsToGoogleSheet, schedulePushToGoogleSheet } from "./services/googleSheet.js";
 
 import publicRouter from "./routes/public.js";
 import authRouter from "./routes/auth.js";
@@ -481,7 +481,8 @@ app.delete("/api/admin/rooms/:id/images", requireAdmin, async (req, res) => {
    ADMIN BOOKINGS
 ========================= */
 app.get("/api/admin/bookings", requireAdmin, (req, res) => {
-  cleanupExpiredSepay();
+  const expiredCount = cleanupExpiredSepay();
+  if (expiredCount > 0) schedulePushToGoogleSheet();
   const q = String(req.query.q || "").trim();
   const status = String(req.query.status || "all").trim();
   const source = String(req.query.source || "all").trim();
@@ -734,22 +735,26 @@ app.listen(PORT, () => {
   const pollMinutes = Number(process.env.GOOGLE_SHEETS_POLL_MINUTES || 0);
   if (pollMinutes > 0 && process.env.GOOGLE_SHEETS_SPREADSHEET_ID) {
     const ms = pollMinutes * 60 * 1000;
-    syncGoogleSheetToBookings()
-      .then(({ synced, error }) => {
-        if (error) console.warn("[GoogleSheets] startup sync failed:", error);
-        else if (synced > 0) console.log("[GoogleSheets] startup synced", synced, "rows");
-      })
-      .catch((e) => console.warn("[GoogleSheets] startup sync error:", e?.message || e));
-    setInterval(() => {
+    const runSync = () =>
       syncGoogleSheetToBookings()
         .then(({ synced, error }) => {
-          if (error) console.warn("[GoogleSheets] poll sync failed:", error);
-          else if (synced > 0) console.log("[GoogleSheets] poll synced", synced, "rows");
+          if (error) console.warn("[GoogleSheets] sync Sheet→Web failed:", error);
+          else if (synced > 0) console.log("[GoogleSheets] sync Sheet→Web:", synced, "rows");
         })
-        .catch((e) => console.warn("[GoogleSheets] poll error:", e?.message || e));
-    }, ms);
-    console.log(`📊 Google Sheets: đồng bộ Sheet→Web mỗi ${pollMinutes} phút`);
+        .catch((e) => console.warn("[GoogleSheets] sync error:", e?.message || e));
+    const runPush = () =>
+      pushBookingsToGoogleSheet()
+        .then(({ ok, count, error }) => {
+          if (!ok) console.warn("[GoogleSheets] push Web→Sheet failed:", error);
+          else if (count > 0) console.log("[GoogleSheets] push Web→Sheet:", count, "rows");
+        })
+        .catch((e) => console.warn("[GoogleSheets] push error:", e?.message || e));
+    runSync();
+    runPush();
+    setInterval(runSync, ms);
+    setInterval(runPush, ms);
+    console.log(`📊 Google Sheets: đồng bộ Sheet↔Web mỗi ${pollMinutes} phút`);
   } else if (process.env.GOOGLE_SHEETS_SPREADSHEET_ID && !pollMinutes) {
-    console.log("📊 Google Sheets: POLL_MINUTES=0 → chỉ đồng bộ Sheet→Web khi admin bấm «Đồng bộ» hoặc set GOOGLE_SHEETS_POLL_MINUTES>0");
+    console.log("📊 Google Sheets: POLL_MINUTES=0 → chỉ đồng bộ khi admin bấm «Đồng bộ» hoặc set GOOGLE_SHEETS_POLL_MINUTES>0");
   }
 });

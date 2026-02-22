@@ -6,7 +6,8 @@ import {
   paymentStatusClass,
   getBookingStatusKey,
   getPaymentStatusKey,
-  getPaymentMethodKey
+  getPaymentMethodKey,
+  getDisplayPaymentStatus
 } from "../utils/labels";
 import { fmtDDMMYYYYFromISO, nightsBetween } from "../utils/date";
 import { usePageTitle } from "../utils/usePageTitle";
@@ -258,7 +259,7 @@ export default function BookingStatus() {
 
               <div className="badges">
                 <span className={bookingStatusClass(b.status)}>{t(getBookingStatusKey(b.status))}</span>
-                <span className={paymentStatusClass(b.payment_status)}>{t(getPaymentStatusKey(b.payment_status))}</span>
+                <span className={paymentStatusClass(getDisplayPaymentStatus(b))}>{t(getPaymentStatusKey(getDisplayPaymentStatus(b)))}</span>
               </div>
             </div>
 
@@ -286,63 +287,80 @@ export default function BookingStatus() {
             </div>
 
             {String(b.status || "").toLowerCase() !== "canceled" && (
-              String(b.payment_method || "").toLowerCase() === "cash" ? (
-                <div className="card2 pay-summary-card" style={{ marginTop: 12 }}>
-                  <div className="pay-summary-title">{t("booking_status.pay_cash_at_room")}</div>
-                  <div className="muted" style={{ marginTop: 4 }}>
-                    {t("booking_status.payment_status")} <b>{t(getPaymentStatusKey(b.payment_status))}</b>
-                  </div>
-                </div>
-              ) : (
-                <div className="card2 pay-summary-card" style={{ marginTop: 12 }}>
-                  <div className="pay-summary-title">{t("booking_status.pay_transfer")}</div>
-
-                  <div className="muted" style={{ marginTop: 6 }}>
-                    {t("booking_status.transfer_content")} <b>{transferContent}</b>
-                  </div>
-
-                  <div className="muted" style={{ marginTop: 6 }}>
-                    {t("booking_status.amount")} <b>{formatMoney(total || 0)}</b>
-                  </div>
-
-                  {bank && (
-                    <div style={{ marginTop: 10 }} className="row2">
-                      <div>
-                        <div className="muted">{t("booking_status.bank")}</div>
-                        <div style={{ fontWeight: 950 }}>{bank.bank_name}</div>
-                      </div>
-                      <div>
-                        <div className="muted">{t("booking_status.account_holder")}</div>
-                        <div style={{ fontWeight: 950 }}>{bank.account_name || "—"}</div>
-                      </div>
-                      <div>
-                        <div className="muted">{t("booking_status.account_number")}</div>
-                        <div style={{ fontWeight: 950 }}>{bank.account_number}</div>
+              (() => {
+                const displayStatus = getDisplayPaymentStatus(b);
+                const isFullyPaidAndConfirmed = String(b.status || "").toLowerCase() === "confirmed" && displayStatus === "paid";
+                if (String(b.payment_method || "").toLowerCase() === "cash") {
+                  return (
+                    <div className="card2 pay-summary-card" style={{ marginTop: 12 }}>
+                      <div className="pay-summary-title">{t("booking_status.pay_cash_at_room")}</div>
+                      <div className="muted" style={{ marginTop: 4 }}>
+                        {t("booking_status.payment_status")} <b>{t(getPaymentStatusKey(displayStatus))}</b>
                       </div>
                     </div>
-                  )}
-
-                  {qrUrl ? (
-                    <div className="pay-qr" style={{ marginTop: 12 }}>
-                      <img src={qrUrl} alt="SePay QR" />
-                      <div className="muted" style={{ textAlign: "center" }}>
-                        {t("booking_status.scan_qr")}
+                  );
+                }
+                if (isFullyPaidAndConfirmed) {
+                  return (
+                    <div className="card2 pay-summary-card" style={{ marginTop: 12 }}>
+                      <div className="pay-summary-title">{t("booking_status.pay_transfer")}</div>
+                      <div className="muted" style={{ marginTop: 4 }}>
+                        {t("booking_status.payment_status")} <b style={{ color: "green" }}>{t(getPaymentStatusKey(displayStatus))}</b>
                       </div>
                     </div>
-                  ) : (
+                  );
+                }
+                return (
+                  <div className="card2 pay-summary-card" style={{ marginTop: 12 }}>
+                    <div className="pay-summary-title">{t("booking_status.pay_transfer")}</div>
+
+                    <div className="muted" style={{ marginTop: 6 }}>
+                      {t("booking_status.transfer_content")} <b>{transferContent}</b>
+                    </div>
+
+                    <div className="muted" style={{ marginTop: 6 }}>
+                      {t("booking_status.amount")} <b>{formatMoney(total || 0)}</b>
+                    </div>
+
+                    {bank && (
+                      <div style={{ marginTop: 10 }} className="row2">
+                        <div>
+                          <div className="muted">{t("booking_status.bank")}</div>
+                          <div style={{ fontWeight: 950 }}>{bank.bank_name}</div>
+                        </div>
+                        <div>
+                          <div className="muted">{t("booking_status.account_holder")}</div>
+                          <div style={{ fontWeight: 950 }}>{bank.account_name || "—"}</div>
+                        </div>
+                        <div>
+                          <div className="muted">{t("booking_status.account_number")}</div>
+                          <div style={{ fontWeight: 950 }}>{bank.account_number}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {qrUrl ? (
+                      <div className="pay-qr" style={{ marginTop: 12 }}>
+                        <img src={qrUrl} alt="SePay QR" />
+                        <div className="muted" style={{ textAlign: "center" }}>
+                          {t("booking_status.scan_qr")}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="muted" style={{ marginTop: 10 }}>
+                        {t("booking_status.no_qr")}
+                      </div>
+                    )}
+
                     <div className="muted" style={{ marginTop: 10 }}>
-                      {t("booking_status.no_qr")}
+                      {t("booking_status.payment_status")}{" "}
+                      <b style={{ color: displayStatus === "paid" ? "green" : "#b45309" }}>
+                        {t(getPaymentStatusKey(displayStatus))}
+                      </b>
                     </div>
-                  )}
-
-                  <div className="muted" style={{ marginTop: 10 }}>
-                    {t("booking_status.payment_status")}{" "}
-                    <b style={{ color: String(b.payment_status).toLowerCase() === "paid" ? "green" : "#b45309" }}>
-                      {t(getPaymentStatusKey(b.payment_status))}
-                    </b>
                   </div>
-                </div>
-              )
+                );
+              })()
             )}
           </div>
         );

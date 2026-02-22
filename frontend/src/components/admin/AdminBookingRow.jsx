@@ -4,7 +4,8 @@ import {
   bookingStatusClass,
   paymentStatusLabel,
   paymentStatusClass,
-  paymentMethodLabel
+  paymentMethodLabel,
+  getDisplayPaymentStatus
 } from "../../utils/labels";
 
 /**
@@ -55,7 +56,7 @@ export default function AdminBookingRow({
             </div>
             <div className="admin-booking-card__line muted">
               {paymentMethodLabel(b.payment_method)} ·{" "}
-              <span className={paymentStatusClass(b.payment_status)}>{paymentStatusLabel(b.payment_status)}</span>
+              <span className={paymentStatusClass(getDisplayPaymentStatus(b))}>{paymentStatusLabel(getDisplayPaymentStatus(b))}</span>
             </div>
             {onShowDetail && (
               <span className="admin-booking-card__hint">Xem chi tiết</span>

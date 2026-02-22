@@ -12,6 +12,7 @@ import {
   paymentStatusLabel,
   paymentStatusClass,
   paymentMethodLabel,
+  getDisplayPaymentStatus,
 } from "../../utils/labels";
 import AdminReviewCard from "./AdminReviewCard.jsx";
 import AdminBookingRow from "./AdminBookingRow.jsx";
@@ -353,7 +354,7 @@ export default function AdminBookingsSection({
                 <div><span className="muted">Tổng tiền:</span> <b>{Number(detailBooking.total_amount || 0).toLocaleString()} ₫</b></div>
                 <div><span className="muted">Đã thanh toán:</span> {Number(detailBooking.paid_amount || 0).toLocaleString()} ₫</div>
                 <div><span className="muted">Thanh toán:</span> {paymentMethodLabel(detailBooking.payment_method)}</div>
-                <div><span className="muted">Trạng thái thanh toán:</span> <span className={paymentStatusClass(detailBooking.payment_status)}>{paymentStatusLabel(detailBooking.payment_status)}</span></div>
+                <div><span className="muted">Trạng thái thanh toán:</span> <span className={paymentStatusClass(getDisplayPaymentStatus(detailBooking))}>{paymentStatusLabel(getDisplayPaymentStatus(detailBooking))}</span></div>
                 <div><span className="muted">Trạng thái đơn:</span> <span className={bookingStatusClass(detailBooking.status)}>{bookingStatusLabel(detailBooking.status)}</span></div>
               </div>
             </div>

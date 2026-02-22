@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { fetchBookingPayment } from "../api";
-import { getPaymentStatusKey } from "../utils/labels";
+import { getPaymentStatusKey, getDisplayPaymentStatus } from "../utils/labels";
 import { useI18n } from "../context/I18n.jsx";
 import { useCurrency } from "../context/Currency.jsx";
 
@@ -107,9 +107,10 @@ export default function Payment() {
   if (!data) return <div className="container">{t("common.loading")}</div>;
 
   const { booking, sepay } = data;
-  const isPending = booking?.status === "pending" && booking?.payment_status !== "paid";
+  const displayPaymentStatus = getDisplayPaymentStatus(booking);
+  const isPending = booking?.status === "pending" && displayPaymentStatus !== "paid";
   const showCountdown = isPending && secondsLeft !== null;
-  const isPaymentSuccess = booking?.status === "confirmed" && (booking?.payment_status === "paid" || booking?.payment_status === "deposit_paid");
+  const isPaymentSuccess = booking?.status === "confirmed" && displayPaymentStatus === "paid";
 
   return (
     <div className="container">
@@ -183,7 +184,7 @@ export default function Payment() {
           <>
             <div><b>{t("payment.deposit")}</b> {formatMoney(booking.deposit_amount)}</div>
             <div><b>{t("payment.paid")}</b> {formatMoney(booking?.paid_amount ?? 0)}</div>
-            <div><b>{t("payment.status")}</b> {t(getPaymentStatusKey(booking?.payment_status))}</div>
+            <div><b>{t("payment.status")}</b> {t(getPaymentStatusKey(displayPaymentStatus))}</div>
           </>
         )}
       </div>
@@ -192,7 +193,7 @@ export default function Payment() {
       {!isPaymentSuccess && sepay ? (
         <div className="card2 payment-sepay-card" style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 900 }}>
-            {booking?.payment_status === "deposit_paid" && sepay.remainder_amount > 0
+            {displayPaymentStatus !== "paid" && booking?.payment_status === "deposit_paid" && sepay.remainder_amount > 0
               ? t("payment.pay_remainder")
               : t("payment.sepay_title")}
           </div>
@@ -207,7 +208,7 @@ export default function Payment() {
             </div>
           )}
 
-          {booking?.payment_status === "deposit_paid" && sepay.remainder_amount > 0 && (
+          {displayPaymentStatus !== "paid" && booking?.payment_status === "deposit_paid" && sepay.remainder_amount > 0 && (
             <div className="muted" style={{ marginTop: 8 }}>
               {t("payment.you_paid_deposit")} <b>{formatMoney(sepay.remainder_amount)}</b>
             </div>
@@ -219,7 +220,7 @@ export default function Payment() {
             {sepay.account_name && <div><b>{t("payment.account_name")}</b> {sepay.account_name}</div>}
             <div><b>{t("payment.transfer_content")}</b> {sepay.order_code}</div>
             <div><b>{t("payment.amount_to_transfer")}</b> {formatMoney(sepay.amount || 0)}</div>
-            {booking?.remainder_payment_method === "cash" && booking?.payment_status === "deposit_paid" && (
+            {booking?.remainder_payment_method === "cash" && displayPaymentStatus !== "paid" && booking?.payment_status === "deposit_paid" && (
               <div className="muted" style={{ marginTop: 8 }}>
                 {t("payment.remainder_cash")}
               </div>
@@ -248,7 +249,7 @@ export default function Payment() {
             </div>
           )}
           <div className="muted" style={{ marginTop: 6 }}>
-            {t("payment.cash_status")} <b>{t(booking?.payment_status === "paid" ? "labels.payment_status_paid" : "labels.payment_status_unpaid")}</b>
+            {t("payment.cash_status")} <b>{t(displayPaymentStatus === "paid" ? "labels.payment_status_paid" : "labels.payment_status_unpaid")}</b>
           </div>
         </div>
       ) : null}

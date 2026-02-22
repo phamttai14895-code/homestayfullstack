@@ -46,6 +46,16 @@ export function paymentStatusLabel(status) {
   return PAYMENT_STATUS_LABEL[s] || (status ? String(status) : "—");
 }
 
+/** Trạng thái thanh toán hiển thị: nếu đã trả đủ (paid_amount >= total) thì coi là "paid". */
+export function getDisplayPaymentStatus(booking) {
+  if (!booking) return "unpaid";
+  const ps = norm(booking.payment_status || "");
+  const total = Number(booking.total_amount || 0);
+  const paid = Number(booking.paid_amount || 0);
+  if (total > 0 && paid >= total) return "paid";
+  return ps || "unpaid";
+}
+
 export function paymentMethodLabel(method) {
   const m = norm(method);
   return PAYMENT_METHOD_LABEL[m] || (method ? String(method) : "—");

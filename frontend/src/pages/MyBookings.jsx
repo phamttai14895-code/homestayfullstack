@@ -6,7 +6,8 @@ import {
   paymentStatusClass,
   getBookingStatusKey,
   getPaymentStatusKey,
-  getPaymentMethodKey
+  getPaymentMethodKey,
+  getDisplayPaymentStatus
 } from "../utils/labels";
 import { fmtDDMMYYYYFromISO, nightsBetween } from "../utils/date";
 import { useI18n } from "../context/I18n.jsx";
@@ -249,7 +250,7 @@ export default function MyBookings() {
                   <div style={{ fontWeight: 950, fontSize: 16 }}>
                     <b>#{b.id}</b> • <span className="badge">{b.lookup_code}</span>{" "}
                     • <span className={bookingStatusClass(b.status)}>{t(getBookingStatusKey(b.status))}</span>{" "}
-                    • <span className={paymentStatusClass(b.payment_status)}>{t(getPaymentStatusKey(b.payment_status))}</span>
+                    • <span className={paymentStatusClass(getDisplayPaymentStatus(b))}>{t(getPaymentStatusKey(getDisplayPaymentStatus(b)))}</span>
                   </div>
 
                   <div className="muted" style={{ marginTop: 4 }}>
@@ -313,7 +314,7 @@ export default function MyBookings() {
                 <div className="card2 pay-summary-card" style={{ marginTop: 12 }}>
                   <div className="pay-summary-title">{t("my_bookings.cash_section_title")}</div>
                   <div className="muted" style={{ marginTop: 4 }}>
-                    {t("my_bookings.payment_status_label")} <b>{t(getPaymentStatusKey(b.payment_status))}</b>
+                    {t("my_bookings.payment_status_label")} <b>{t(getPaymentStatusKey(getDisplayPaymentStatus(b)))}</b>
                   </div>
                 </div>
               ) : (
@@ -328,9 +329,9 @@ export default function MyBookings() {
                     <div className="muted" style={{ marginTop: 8 }}>
                       {t("my_bookings.completed")}
                     </div>
-                  ) : b.payment_status === "paid" ? (
+                  ) : getDisplayPaymentStatus(b) === "paid" ? (
                     <div className="muted" style={{ marginTop: 8 }}>
-                      {t("my_bookings.paid_success_msg")} <b>{t(getPaymentStatusKey(b.payment_status))}</b>
+                      {t("my_bookings.paid_success_msg")} <b>{t(getPaymentStatusKey(getDisplayPaymentStatus(b)))}</b>
                     </div>
                   ) : (
                     <>
@@ -363,7 +364,7 @@ export default function MyBookings() {
                           <div>
                             <div className="muted">{t("booking_status.payment_status")}</div>
                             <div style={{ fontWeight: 950 }}>
-                              {t(getPaymentStatusKey(b.payment_status))}
+                              {t(getPaymentStatusKey(getDisplayPaymentStatus(b)))}
                             </div>
                           </div>
                         </div>

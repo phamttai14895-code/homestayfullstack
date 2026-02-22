@@ -50,6 +50,10 @@ export default function AdminBookingsSection({
   setDayPricesPanel,
   setDayPrice,
   loadDayPricesForMonth,
+  setPricePresets,
+  addHoliday,
+  removeHoliday,
+  importVietnamHolidays,
   // Reviews hook
   reviewsPanel,
   setReviewsPanel,
@@ -202,6 +206,93 @@ export default function AdminBookingsSection({
               <button className="btn btn-ghost btn-sm" type="button" onClick={() => setDayPricesPanel(null)}>Đóng</button>
             </div>
           </div>
+
+          <div className="day-prices-presets" style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 12, padding: 12, background: "var(--bg-2)", borderRadius: 8 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span className="muted" style={{ minWidth: 110 }}>Giá ngày thường:</span>
+              <input
+                type="number"
+                min="0"
+                placeholder="mặc định"
+                value={dayPricesPanel.price_weekday ?? ""}
+                onChange={(e) => setDayPricesPanel((s) => ({ ...s, price_weekday: e.target.value === "" ? null : Number(e.target.value) }))}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  const pw = v === "" ? null : Math.max(0, Number(v) || 0);
+                  setPricePresets(dayPricesPanel.roomId, { price_weekday: pw, price_weekend: dayPricesPanel.price_weekend, price_holiday: dayPricesPanel.price_holiday });
+                }}
+                style={{ width: 100, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)" }}
+              />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span className="muted" style={{ minWidth: 110 }}>Giá cuối tuần:</span>
+              <input
+                type="number"
+                min="0"
+                placeholder="mặc định"
+                value={dayPricesPanel.price_weekend ?? ""}
+                onChange={(e) => setDayPricesPanel((s) => ({ ...s, price_weekend: e.target.value === "" ? null : Number(e.target.value) }))}
+                onBlur={(e) => {
+                const v = e.target.value.trim();
+                const pwe = v === "" ? null : Math.max(0, Number(v) || 0);
+                setPricePresets(dayPricesPanel.roomId, { price_weekday: dayPricesPanel.price_weekday, price_weekend: pwe, price_holiday: dayPricesPanel.price_holiday });
+              }}
+                style={{ width: 100, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)" }}
+              />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span className="muted" style={{ minWidth: 110 }}>Giá ngày lễ:</span>
+              <input
+                type="number"
+                min="0"
+                placeholder="mặc định"
+                value={dayPricesPanel.price_holiday ?? ""}
+                onChange={(e) => setDayPricesPanel((s) => ({ ...s, price_holiday: e.target.value === "" ? null : Number(e.target.value) }))}
+                onBlur={(e) => {
+                const v = e.target.value.trim();
+                const ph = v === "" ? null : Math.max(0, Number(v) || 0);
+                setPricePresets(dayPricesPanel.roomId, { price_weekday: dayPricesPanel.price_weekday, price_weekend: dayPricesPanel.price_weekend, price_holiday: ph });
+              }}
+                style={{ width: 100, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)" }}
+              />
+            </label>
+          </div>
+
+          <div className="day-prices-holidays" style={{ marginTop: 10 }}>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Ngày lễ (áp dụng chung tất cả phòng):</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              {typeof importVietnamHolidays === "function" && (
+                <button type="button" className="btn btn-sm btn-outline" onClick={async () => { try { const d = await importVietnamHolidays(); if (d) alert(d.added > 0 ? `Đã thêm ${d.added} ngày lễ VN mới.` : `Không thêm mới (${d.total} ngày đã có sẵn).`); } catch (_) {} }}>
+                  Đồng bộ ngày lễ VN
+                </button>
+              )}
+              <input
+                type="date"
+                id="new-holiday-date"
+                style={{ padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }}
+                onKeyDown={(e) => e.key === "Enter" && (document.getElementById("add-holiday-btn")?.click?.(), e.preventDefault())}
+              />
+              <button
+                id="add-holiday-btn"
+                type="button"
+                className="btn btn-sm"
+                onClick={() => {
+                  const input = document.getElementById("new-holiday-date");
+                  const v = input?.value?.trim();
+                  if (v) { addHoliday(v); input.value = ""; }
+                }}
+              >
+                Thêm ngày lễ
+              </button>
+              {(dayPricesPanel.holidays || []).map((d) => (
+                <span key={d} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 8px", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 13 }}>
+                  {d}
+                  <button type="button" className="btn btn-ghost" style={{ padding: "2px 4px", fontSize: 14 }} onClick={() => removeHoliday(d)} aria-label="Xóa">×</button>
+                </span>
+              ))}
+            </div>
+          </div>
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginTop: 12 }}>
             {(() => {
               const [y, m] = dayPricesPanel.month.split("-").map(Number);

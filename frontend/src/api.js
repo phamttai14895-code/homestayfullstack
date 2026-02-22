@@ -76,6 +76,11 @@ export async function fetchBankInfo() {
   return j(await fetch(`${BASE}/api/bank-info`));
 }
 
+/** Danh sách ngày lễ (public, dùng cho lịch đặt phòng) */
+export async function fetchHolidays() {
+  return j(await fetch(`${BASE}/api/holidays`));
+}
+
 /** Tỉ giá VND/USD theo ngày (1 USD = x VND) */
 export async function fetchExchangeRate() {
   return j(await fetch(`${BASE}/api/exchange-rate`));
@@ -223,6 +228,45 @@ export async function adminReorderRoomImages(roomId, image_urls, image_url) {
 export async function adminDayPrices(roomId, month) {
   return j(await fetch(`${BASE}/api/admin/rooms/${roomId}/day-prices?month=${encodeURIComponent(month)}`, { credentials: "include" }));
 }
+export async function adminSetRoomPricePresets(roomId, { price_weekday, price_weekend, price_holiday }) {
+  return j(await fetch(`${BASE}/api/admin/rooms/${roomId}/price-presets`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ price_weekday, price_weekend, price_holiday })
+  }));
+}
+
+export async function adminHolidays() {
+  return j(await fetch(`${BASE}/api/admin/holidays`, { credentials: "include" }));
+}
+
+export async function adminAddHoliday(date_iso) {
+  return j(await fetch(`${BASE}/api/admin/holidays`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ date_iso })
+  }));
+}
+
+export async function adminRemoveHoliday(date_iso) {
+  return j(await fetch(`${BASE}/api/admin/holidays/${encodeURIComponent(date_iso)}`, {
+    method: "DELETE",
+    credentials: "include"
+  }));
+}
+
+/** Import ngày lễ Việt Nam (2024–2028). body.years = [2025, 2026] hoặc để trống = tất cả. */
+export async function adminImportVietnamHolidays(years = []) {
+  return j(await fetch(`${BASE}/api/admin/holidays/import-vietnam`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ years })
+  }));
+}
+
 export async function adminSetDayPrice(roomId, date_iso, price) {
   return j(await fetch(`${BASE}/api/admin/rooms/${roomId}/day-prices`, {
     method: "PUT",
@@ -245,6 +289,10 @@ export async function adminDeleteImage(roomId, url) {
 export async function adminBookings({ q = "", status = "all", source = "all" } = {}) {
   const qs = new URLSearchParams({ q, status, source }).toString();
   return j(await fetch(`${BASE}/api/admin/bookings?${qs}`, { credentials: "include" }));
+}
+
+export async function adminGetBooking(id) {
+  return j(await fetch(`${BASE}/api/admin/bookings/${id}`, { credentials: "include" }));
 }
 export async function adminSetBookingStatus(id, status) {
   return j(await fetch(`${BASE}/api/admin/bookings/${id}/status`, {
@@ -282,4 +330,11 @@ export async function fetchAdminStats(from, to) {
     qs = `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   }
   return j(await fetch(`${BASE}/api/admin/stats${qs}`, { credentials: "include" }));
+}
+
+export async function fetchAdminStatsWeekDetail(weekStart) {
+  if (!weekStart || !/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
+    throw new Error("INVALID_RANGE");
+  }
+  return j(await fetch(`${BASE}/api/admin/stats/week-detail?weekStart=${encodeURIComponent(weekStart)}`, { credentials: "include" }));
 }

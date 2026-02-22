@@ -184,6 +184,10 @@ export default function AdminDashboard() {
             setDayPricesPanel={rooms.setDayPricesPanel}
             setDayPrice={rooms.setDayPrice}
             loadDayPricesForMonth={rooms.loadDayPricesForMonth}
+            setPricePresets={rooms.setPricePresets}
+            addHoliday={rooms.addHoliday}
+            removeHoliday={rooms.removeHoliday}
+            importVietnamHolidays={rooms.importVietnamHolidays}
             reviewsPanel={reviews.reviewsPanel}
             setReviewsPanel={reviews.setReviewsPanel}
             setLbReview={reviews.setLbReview}

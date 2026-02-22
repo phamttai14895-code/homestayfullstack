@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
-import { BASE, createBooking, fetchAvailability, fetchBankInfo, fetchRoomDetail } from "../api";
+import { BASE, createBooking, fetchAvailability, fetchBankInfo, fetchRoomDetail, fetchHolidays } from "../api";
 import { useI18n } from "../context/I18n.jsx";
 import { useCurrency } from "../context/Currency.jsx";
 import { useUser } from "../context/User.jsx";
@@ -81,6 +81,7 @@ export default function Booking() {
   const [room, setRoom] = useState(null);
   const [blocks, setBlocks] = useState([]);
   const [dayPrices, setDayPrices] = useState({});
+  const [holidays, setHolidays] = useState([]);
   const [hourlySlots, setHourlySlots] = useState([]);
   const [bank, setBank] = useState(null);
   const [displayMonth, setDisplayMonth] = useState(() => new Date());
@@ -115,6 +116,7 @@ export default function Booking() {
     setErr(""); setOk("");
     fetchRoomDetail(roomId).then(d => setRoom(d.room)).catch(()=>setErr(t("booking.err_room")));
     fetchAvailability(roomId).then(d => { setBlocks(d.blocks||[]); }).catch(()=>{});
+    fetchHolidays().then(d => setHolidays(d.holidays || [])).catch(() => setHolidays([]));
   }, [roomId, t]);
 
   useEffect(() => {
@@ -219,12 +221,12 @@ export default function Booking() {
     }
     const weekend = (date) => {
       const d = date.getDay();
-      return d === 0 || d === 6;
+      return d === 5 || d === 6;
     };
-    const VIETNAM_HOLIDAYS = [[0, 1], [2, 10], [3, 30], [4, 1], [8, 2]];
-    const holiday = (date) => VIETNAM_HOLIDAYS.some(([mm, dd]) => date.getMonth() === mm && date.getDate() === dd);
+    const holidaySet = new Set(holidays);
+    const holiday = (date) => holidaySet.has(isoFromDate(date));
     return { pending, confirmed, hover: hoverDay ? [hoverDay] : [], weekend, holiday };
-  }, [blockedDays, statusByIsoDay, hoverDay]);
+  }, [blockedDays, statusByIsoDay, hoverDay, holidays]);
 
   const modifierStyles = {
     pending: { background: "rgba(245,158,11,.18)", borderRadius: "10px" },

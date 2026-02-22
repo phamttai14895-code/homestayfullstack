@@ -94,6 +94,23 @@ export function migrateNewColumns() {
   if (!hasColumn(db, "users", "verify_token_expires")) {
     db.prepare("ALTER TABLE users ADD COLUMN verify_token_expires TEXT").run();
   }
+  if (!hasColumn(db, "rooms", "price_weekday")) {
+    db.prepare("ALTER TABLE rooms ADD COLUMN price_weekday INTEGER").run();
+  }
+  if (!hasColumn(db, "rooms", "price_weekend")) {
+    db.prepare("ALTER TABLE rooms ADD COLUMN price_weekend INTEGER").run();
+  }
+  if (!hasColumn(db, "rooms", "price_holiday")) {
+    db.prepare("ALTER TABLE rooms ADD COLUMN price_holiday INTEGER").run();
+  }
+}
+
+export function ensureHolidaysTable() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS holidays (
+      date_iso TEXT PRIMARY KEY
+    )
+  `);
 }
 
 export function parseJsonArray(s) {
@@ -210,6 +227,7 @@ CREATE INDEX IF NOT EXISTS idx_wishlists_user ON wishlists(user_id);
 `);
 
 migrateNewColumns();
+ensureHolidaysTable();
 
 if (db.prepare(`SELECT COUNT(*) c FROM rooms`).get().c === 0) {
   db.prepare(`

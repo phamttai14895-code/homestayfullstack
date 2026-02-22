@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, parseJsonArray, decorateRoom } from "../db.js";
 import { isAdminEmail } from "../middleware.js";
-import { cleanupExpiredSepay, isAfterCheckout, parseISODate } from "../helpers.js";
+import { cleanupExpiredSepay, isAfterCheckout, parseISODate, getDayPrice } from "../helpers.js";
 import { getSepayBankInfo } from "../services/sepay.js";
 
 const router = Router();
@@ -45,6 +45,12 @@ router.get("/exchange-rate", async (_req, res) => {
 /** Bank info - public */
 router.get("/bank-info", (_req, res) => {
   res.json(getSepayBankInfo());
+});
+
+/** Danh sách ngày lễ (public, dùng cho lịch đặt phòng) */
+router.get("/holidays", (_req, res) => {
+  const rows = db.prepare(`SELECT date_iso FROM holidays ORDER BY date_iso`).all();
+  res.json({ holidays: rows.map((r) => r.date_iso) });
 });
 
 router.get("/me", (req, res) => {
@@ -190,8 +196,6 @@ router.get("/availability/:roomId", (req, res) => {
 
   let day_prices = {};
   if (month && /^\d{4}-\d{2}$/.test(month)) {
-    const room = db.prepare(`SELECT price_per_night FROM rooms WHERE id=?`).get(roomId);
-    const defaultPrice = room ? Number(room.price_per_night || 0) : 0;
     const customRows = db.prepare(`
       SELECT date_iso, price FROM room_day_prices
       WHERE room_id=? AND date_iso LIKE ?
@@ -201,7 +205,7 @@ router.get("/availability/:roomId", (req, res) => {
     const lastDay = new Date(y, m, 0).getDate();
     for (let d = 1; d <= lastDay; d++) {
       const iso = `${month}-${String(d).padStart(2, "0")}`;
-      if (day_prices[iso] == null) day_prices[iso] = defaultPrice;
+      if (day_prices[iso] == null) day_prices[iso] = getDayPrice(roomId, iso);
     }
   }
 

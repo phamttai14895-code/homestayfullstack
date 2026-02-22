@@ -265,7 +265,75 @@ app.get("/api/admin/rooms/:id/day-prices", requireAdmin, (req, res) => {
   `).all(id, `${month}%`);
   const day_prices = {};
   for (const r of rows) day_prices[r.date_iso] = r.price;
-  res.json({ room_id: id, month, day_prices });
+  res.json({
+    room_id: id,
+    month,
+    day_prices,
+    price_weekday: room.price_weekday != null ? Number(room.price_weekday) : null,
+    price_weekend: room.price_weekend != null ? Number(room.price_weekend) : null,
+    price_holiday: room.price_holiday != null ? Number(room.price_holiday) : null
+  });
+});
+
+app.put("/api/admin/rooms/:id/price-presets", requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const { price_weekday, price_weekend, price_holiday } = req.body || {};
+  const room = db.prepare(`SELECT id FROM rooms WHERE id=?`).get(id);
+  if (!room) return res.status(404).json({ error: "ROOM_NOT_FOUND" });
+  const pw = price_weekday === "" || price_weekday == null ? null : Math.max(0, Number(price_weekday) || 0);
+  const pwe = price_weekend === "" || price_weekend == null ? null : Math.max(0, Number(price_weekend) || 0);
+  const ph = price_holiday === "" || price_holiday == null ? null : Math.max(0, Number(price_holiday) || 0);
+  db.prepare(
+    `UPDATE rooms SET price_weekday=?, price_weekend=?, price_holiday=? WHERE id=?`
+  ).run(pw, pwe, ph, id);
+  res.json({ room_id: id, price_weekday: pw, price_weekend: pwe, price_holiday: ph });
+});
+
+app.get("/api/admin/holidays", requireAdmin, (req, res) => {
+  const rows = db.prepare(`SELECT date_iso FROM holidays ORDER BY date_iso`).all();
+  res.json({ holidays: rows.map((r) => r.date_iso) });
+});
+
+app.post("/api/admin/holidays", requireAdmin, (req, res) => {
+  const date_iso = String(req.body?.date_iso || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date_iso)) return res.status(400).json({ error: "INVALID_DATE" });
+  try {
+    db.prepare(`INSERT INTO holidays (date_iso) VALUES (?)`).run(date_iso);
+  } catch (e) {
+    if (e.message?.includes("UNIQUE")) return res.status(409).json({ error: "ALREADY_EXISTS" });
+    throw e;
+  }
+  res.json({ date_iso });
+});
+
+app.delete("/api/admin/holidays/:dateIso", requireAdmin, (req, res) => {
+  const date_iso = String(req.params.dateIso || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date_iso)) return res.status(400).json({ error: "INVALID_DATE" });
+  db.prepare(`DELETE FROM holidays WHERE date_iso=?`).run(date_iso);
+  res.json({ ok: true });
+});
+
+/** Ngày lễ cố định + Tết, Giỗ Tổ theo năm (solar dates). Cập nhật khi có lịch chính thức. */
+const VIETNAM_HOLIDAYS_BY_YEAR = {
+  2024: ["2024-01-01", "2024-02-08", "2024-02-09", "2024-02-10", "2024-02-11", "2024-02-12", "2024-02-13", "2024-02-14", "2024-04-18", "2024-04-30", "2024-05-01", "2024-09-02"],
+  2025: ["2025-01-01", "2025-01-28", "2025-01-29", "2025-01-30", "2025-01-31", "2025-02-01", "2025-02-02", "2025-02-03", "2025-04-06", "2025-04-30", "2025-05-01", "2025-09-02", "2025-09-03"],
+  2026: ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-04-26", "2026-04-27", "2026-04-30", "2026-05-01", "2026-09-01", "2026-09-02"],
+  2027: ["2027-01-01", "2027-02-05", "2027-02-06", "2027-02-07", "2027-02-08", "2027-02-09", "2027-04-14", "2027-04-30", "2027-05-01", "2027-09-02"],
+  2028: ["2028-01-01", "2028-01-26", "2028-01-27", "2028-01-28", "2028-01-29", "2028-01-30", "2028-04-03", "2028-04-30", "2028-05-01", "2028-09-02"]
+};
+
+app.post("/api/admin/holidays/import-vietnam", requireAdmin, (req, res) => {
+  const years = req.body?.years || [];
+  const toImport = Array.isArray(years) && years.length > 0
+    ? years.filter((y) => VIETNAM_HOLIDAYS_BY_YEAR[y]).flatMap((y) => VIETNAM_HOLIDAYS_BY_YEAR[y])
+    : Object.values(VIETNAM_HOLIDAYS_BY_YEAR).flat();
+  const insert = db.prepare(`INSERT OR IGNORE INTO holidays (date_iso) VALUES (?)`);
+  let added = 0;
+  for (const d of toImport) {
+    const r = insert.run(d);
+    if (r.changes > 0) added++;
+  }
+  res.json({ added, total: toImport.length });
 });
 
 app.put("/api/admin/rooms/:id/day-prices", requireAdmin, (req, res) => {
@@ -519,6 +587,14 @@ app.get("/api/admin/bookings", requireAdmin, (req, res) => {
   res.json({ bookings: rows, bank: getSepayBankInfo() });
 });
 
+app.get("/api/admin/bookings/:id", requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: "INVALID_ID" });
+  const b = db.prepare(`SELECT b.*, r.name room_name FROM bookings b JOIN rooms r ON r.id = b.room_id WHERE b.id = ?`).get(id);
+  if (!b) return res.status(404).json({ error: "NOT_FOUND" });
+  return res.json({ booking: b });
+});
+
 app.put("/api/admin/bookings/:id/status", requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   const newStatus = String(req.body.status || "").toLowerCase();
@@ -728,6 +804,22 @@ app.get("/api/admin/stats", requireAdmin, (req, res) => {
     periodStartFormatted: toDDMMYYYY(periodStart),
     periodEndFormatted: toDDMMYYYY(periodEnd)
   });
+});
+
+app.get("/api/admin/stats/week-detail", requireAdmin, (req, res) => {
+  const weekStartParam = String(req.query.weekStart || req.query.from || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStartParam)) {
+    return res.status(400).json({ error: "INVALID_RANGE" });
+  }
+  // Dùng cùng logic nhóm tuần: date(check_in, 'weekday 0', '-6 days') = weekStart (thứ Hai)
+  const rows = db.prepare(`
+    SELECT b.id, b.lookup_code, b.full_name, b.phone, b.check_in, b.check_out, b.booking_type, b.total_amount, r.name room_name
+    FROM bookings b JOIN rooms r ON r.id = b.room_id
+    WHERE b.status = 'confirmed'
+    AND date(b.check_in, 'weekday 0', '-6 days') = ?
+    ORDER BY b.check_in ASC, b.id ASC
+  `).all(weekStartParam);
+  return res.json({ bookings: rows });
 });
 
 /* =========================

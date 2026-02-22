@@ -54,14 +54,37 @@ export function timeRangesOverlap(aStart, aEnd, bStart, bEnd) {
   return a1 < b2 && a2 > b1;
 }
 
-/** Giá phòng cho một ngày: ưu tiên room_day_prices, fallback price_per_night. */
+/** Kiểm tra ngày có phải cuối tuần (thứ 6, thứ 7). */
+function isWeekend(dateIso) {
+  const d = parseISODate(dateIso);
+  if (!d) return false;
+  const day = d.getDay();
+  return day === 5 || day === 6;
+}
+
+/** Kiểm tra ngày có trong danh sách ngày lễ không. */
+function isHoliday(dateIso) {
+  const row = db.prepare(`SELECT 1 FROM holidays WHERE date_iso=?`).get(dateIso);
+  return !!row;
+}
+
+/** Giá phòng cho một ngày: ưu tiên room_day_prices, rồi ngày lễ, cuối tuần, ngày thường, fallback price_per_night. */
 export function getDayPrice(roomId, dateIso) {
-  const room = db.prepare(`SELECT price_per_night FROM rooms WHERE id=?`).get(roomId);
-  const defaultPrice = room ? Number(room.price_per_night || 0) : 0;
   const row = db.prepare(
     `SELECT price FROM room_day_prices WHERE room_id=? AND date_iso=?`
   ).get(roomId, dateIso);
-  return row != null ? Number(row.price) : defaultPrice;
+  if (row != null) return Number(row.price);
+
+  const room = db.prepare(
+    `SELECT price_per_night, price_weekday, price_weekend, price_holiday FROM rooms WHERE id=?`
+  ).get(roomId);
+  const defaultPrice = room ? Number(room.price_per_night || 0) : 0;
+  if (!room) return defaultPrice;
+
+  if (isHoliday(dateIso) && room.price_holiday != null) return Number(room.price_holiday);
+  if (isWeekend(dateIso) && room.price_weekend != null) return Number(room.price_weekend);
+  if (room.price_weekday != null) return Number(room.price_weekday);
+  return defaultPrice;
 }
 
 /** Tổng tiền qua đêm: cộng giá từng ngày từ check_in đến trước check_out. */

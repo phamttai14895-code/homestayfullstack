@@ -10,6 +10,11 @@ import {
   adminReorderRoomImages,
   adminDayPrices,
   adminSetDayPrice,
+  adminSetRoomPricePresets,
+  adminHolidays,
+  adminAddHoliday,
+  adminRemoveHoliday,
+  adminImportVietnamHolidays,
 } from "../api";
 import { parseAmenities, parseUrls, safeArr } from "../utils/parse.js";
 
@@ -211,12 +216,16 @@ export function useAdminRooms() {
   const openDayPrices = useCallback(async (room) => {
     try {
       const month = new Date().toISOString().slice(0, 7);
-      const d = await adminDayPrices(room.id, month);
+      const [d, h] = await Promise.all([adminDayPrices(room.id, month), adminHolidays()]);
       setDayPricesPanel({
         roomId: room.id,
         roomName: room.name,
         month,
         day_prices: d.day_prices || {},
+        price_weekday: d.price_weekday ?? null,
+        price_weekend: d.price_weekend ?? null,
+        price_holiday: d.price_holiday ?? null,
+        holidays: h.holidays || [],
       });
     } catch (e) {
       alert("Lỗi tải giá/ngày: " + (e?.message || e));
@@ -242,11 +251,57 @@ export function useAdminRooms() {
     if (!dayPricesPanel || !month) return;
     try {
       const d = await adminDayPrices(dayPricesPanel.roomId, month);
-      setDayPricesPanel((s) => ({ ...s, month, day_prices: d.day_prices || {} }));
+      setDayPricesPanel((s) => ({
+        ...s,
+        month,
+        day_prices: d.day_prices || {},
+        price_weekday: d.price_weekday ?? s.price_weekday,
+        price_weekend: d.price_weekend ?? s.price_weekend,
+        price_holiday: d.price_holiday ?? s.price_holiday,
+      }));
     } catch (err) {
       alert("Lỗi tải giá tháng: " + (err?.message || err));
     }
   }, [dayPricesPanel]);
+
+  const setPricePresets = useCallback(async (roomId, { price_weekday, price_weekend, price_holiday }) => {
+    try {
+      await adminSetRoomPricePresets(roomId, { price_weekday, price_weekend, price_holiday });
+      setDayPricesPanel((s) => s?.roomId === roomId ? { ...s, price_weekday, price_weekend, price_holiday } : s);
+    } catch (err) {
+      alert("Lỗi lưu giá: " + (err?.message || err));
+    }
+  }, []);
+
+  const addHoliday = useCallback(async (date_iso) => {
+    try {
+      await adminAddHoliday(date_iso);
+      setDayPricesPanel((s) => s ? { ...s, holidays: [...(s.holidays || []), date_iso].sort() } : s);
+    } catch (err) {
+      alert(err?.message === "ALREADY_EXISTS" ? "Ngày lễ đã có." : "Lỗi: " + (err?.message || err));
+    }
+  }, []);
+
+  const removeHoliday = useCallback(async (date_iso) => {
+    try {
+      await adminRemoveHoliday(date_iso);
+      setDayPricesPanel((s) => s ? { ...s, holidays: (s.holidays || []).filter((d) => d !== date_iso) } : s);
+    } catch (err) {
+      alert("Lỗi: " + (err?.message || err));
+    }
+  }, []);
+
+  const importVietnamHolidays = useCallback(async () => {
+    try {
+      const d = await adminImportVietnamHolidays();
+      const h = await adminHolidays();
+      setDayPricesPanel((s) => s ? { ...s, holidays: (h.holidays || []).sort() } : s);
+      return d;
+    } catch (err) {
+      alert("Lỗi đồng bộ: " + (err?.message || err));
+      throw err;
+    }
+  }, []);
 
   return {
     err,
@@ -272,6 +327,10 @@ export function useAdminRooms() {
     openDayPrices,
     setDayPrice,
     loadDayPricesForMonth,
+    setPricePresets,
+    addHoliday,
+    removeHoliday,
+    importVietnamHolidays,
     parseAmenities,
   };
 }

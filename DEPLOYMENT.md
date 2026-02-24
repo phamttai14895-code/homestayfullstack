@@ -254,7 +254,7 @@ nano /etc/nginx/sites-available/homestay
 ```nginx
 server {
     listen 80;
-    server_name abcjqk.space www.abcjqk.space;
+    server_name yourdomain.com www.yourdomain.com;
     client_max_body_size 10M;
     root /var/www/homestayfullstack/frontend/dist;
     index index.html;

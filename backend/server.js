@@ -692,14 +692,35 @@ app.delete("/api/admin/reviews/:id", requireAdmin, async (req, res) => {
 app.post("/api/admin/sync-google-sheet", requireAdmin, (req, res) => {
   const roomNames = db.prepare("SELECT id, name FROM rooms ORDER BY id").all().map((r) => `${r.name} (id:${r.id})`);
   syncGoogleSheetToBookings()
-    .then(({ synced, error, fetched, rawRowCount }) => {
-      if (error) return res.status(400).json({ error, synced: synced || 0, fetched: fetched || 0, rawRowCount: rawRowCount || 0, roomNames });
-      const msg = rawRowCount === 0
+    .then(({ synced, error, fetched, rawRowCount, source }) => {
+      if (error) {
+        res.status(400).json({ error, synced: synced || 0, fetched: fetched || 0, rawRowCount: rawRowCount || 0, roomNames });
+        return null;
+      }
+      const isReport = source === "report";
+      const msg = rawRowCount === 0 && !isReport
         ? "Sheet không có dữ liệu (hoặc range sai). Kiểm tra tab và dòng 2 trở đi."
         : synced === 0 && (fetched === 0 || rawRowCount > 0)
-          ? "Không có dòng nào hợp lệ. Cột A phải là tên phòng hoặc ID (xem roomNames); B,C = ngày; D = pending hoặc confirmed."
+          ? isReport
+            ? "Không có đơn nào hợp lệ từ bảng lịch. C3:M3 = tên phòng (trùng app, hoặc thêm (id:4)); ô C4:M34 = 'Tên | Qua đêm dd/mm-dd/mm' hoặc 'Tên | Theo giờ HH:mm-HH:mm'. roomNames: " + roomNames.join(", ")
+            : "Không có dòng nào hợp lệ. Cột A phải là tên phòng hoặc ID (xem roomNames); B,C = ngày; D = pending hoặc confirmed."
           : "Đã đồng bộ " + synced + " đặt phòng từ Google Sheet. Lịch web đã cập nhật.";
-      res.json({ synced, fetched: fetched || 0, rawRowCount: rawRowCount || 0, message: msg, roomNames });
+      return { synced, fetched: fetched || 0, rawRowCount: rawRowCount || 0, message: msg, roomNames };
+    })
+    .then((payload) => {
+      if (!payload) return null;
+      return pushBookingsToGoogleSheet().then((pushResult) => ({ ...payload, pushResult }));
+    })
+    .then((payload) => {
+      if (!payload) return;
+      const pushOk = payload.pushResult?.ok;
+      const pushErr = payload.pushResult?.error;
+      const msg = pushOk
+        ? (payload.message || "Đã đồng bộ.") + " Đã ghi bảng lịch Web→Sheet (A4:M34)."
+        : pushErr
+          ? (payload.message || "Đã đồng bộ.") + " Ghi lên Sheet thất bại: " + pushErr
+          : payload.message;
+      res.json({ synced: payload.synced, fetched: payload.fetched, rawRowCount: payload.rawRowCount, message: msg, roomNames: payload.roomNames });
     })
     .catch((err) => res.status(500).json({ error: String(err?.message || err) }));
 });

@@ -74,7 +74,7 @@ function getReportMonthYear() {
   return { year: now.getFullYear(), month: now.getMonth() + 1 };
 }
 
-/** Parse ô: "Tên | Qua đêm dd/mm-dd/mm" hoặc "Tên | Theo giờ HH:mm-HH:mm". */
+/** Parse ô: "Tên | Qua đêm dd/mm-dd/mm" hoặc "Tên | Theo giờ HH:mm-HH:mm", phần cuối có thể "Đã TT" hoặc "Chờ TT". */
 function parseReportCell(text, reportYear) {
   const s = String(text || "").trim();
   if (!s) return null;
@@ -82,6 +82,9 @@ function parseReportCell(text, reportYear) {
   if (parts.length < 2) return null;
   const fullName = parts[0];
   const typePart = parts[1];
+  const hasPaid = /Đã\s*TT/i.test(s);
+  const status = hasPaid ? "confirmed" : "pending";
+
   const overnightMatch = typePart.match(/Qua đêm\s+(\d{1,2})\/(\d{1,2})-(\d{1,2})\/(\d{1,2})/i);
   if (overnightMatch) {
     const [, d1, m1, d2, m2] = overnightMatch;
@@ -91,13 +94,13 @@ function parseReportCell(text, reportYear) {
     const nextDay = new Date(checkOut + "T12:00:00");
     nextDay.setDate(nextDay.getDate() + 1);
     const checkOutExclusive = nextDay.toISOString().slice(0, 10);
-    return { fullName, booking_type: "overnight", check_in: checkIn, check_out: checkOutExclusive, check_in_time: null, check_out_time: null };
+    return { fullName, booking_type: "overnight", check_in: checkIn, check_out: checkOutExclusive, check_in_time: null, check_out_time: null, status };
   }
   const hourlyMatch = typePart.match(/Theo giờ\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/i) || typePart.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
   if (hourlyMatch) {
     const t1 = normalizeTimeStr(hourlyMatch[1]);
     const t2 = normalizeTimeStr(hourlyMatch[2]);
-    if (t1 && t2) return { fullName, booking_type: "hourly", check_in_time: t1, check_out_time: t2, check_in: null, check_out: null };
+    if (t1 && t2) return { fullName, booking_type: "hourly", check_in_time: t1, check_out_time: t2, check_in: null, check_out: null, status };
   }
   return null;
 }
@@ -105,7 +108,7 @@ function parseReportCell(text, reportYear) {
 /** Đọc bảng báo cáo: row 0 = header (A3:M3), rows 1-31 = ngày 1-31. data[0] = row 3 trong Sheet (tên phòng). */
 export async function fetchGoogleSheetBookings() {
   const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-  const reportRange = process.env.GOOGLE_SHEETS_REPORT_RANGE || "";
+  const reportRange = (process.env.GOOGLE_SHEETS_REPORT_RANGE || "").trim();
   const listRange = process.env.GOOGLE_SHEETS_RANGE || "Sheet1!A2:F500";
   const credPath = process.env.GOOGLE_SHEETS_CREDENTIALS_PATH;
   if (!spreadsheetId || !credPath) {
@@ -132,90 +135,110 @@ export async function fetchGoogleSheetBookings() {
     roomsByName.set(String(r.name || "").trim().toLowerCase(), r.id);
   }
 
+  /** Cột C3:M3 có thể là "609 HHGT (2 ngủ 2 wc)" hoặc "609 HHGT (2 ngủ 2 wc) (id:4)" → map về room_id. */
+  function resolveRoomIdFromSheetCell(cellValue) {
+    const s = String(cellValue || "").trim();
+    if (!s) return null;
+    const idMatch = s.match(/\s*\(id\s*:\s*(\d+)\)\s*$/i) || s.match(/\s*\(id\s*=\s*(\d+)\)\s*$/i);
+    if (idMatch) {
+      const room = db.prepare("SELECT id FROM rooms WHERE id=?").get(parseInt(idMatch[1], 10));
+      if (room) return room.id;
+    }
+    const lower = s.toLowerCase();
+    if (roomsByName.has(lower)) return roomsByName.get(lower);
+    const byTrim = db.prepare("SELECT id FROM rooms WHERE LOWER(TRIM(name))=?").get(lower);
+    if (byTrim) return byTrim.id;
+    for (const [name, id] of roomsByName) {
+      if (name.indexOf(lower) === 0 || lower.indexOf(name) === 0) return id;
+    }
+    return null;
+  }
+
   if (reportRange) {
     const { year, month } = getReportMonthYear();
     const match = reportRange.match(/^([^!]+)!/);
     const sheetName = match ? match[1] : "Sheet1";
     const rangeStr = `${sheetName}!A3:M34`;
-    let data;
+    let gridData;
     try {
       const res = await sheets.spreadsheets.values.get({
         spreadsheetId,
         range: rangeStr,
         dateTimeRenderOption: "FORMATTED_STRING"
       });
-      data = res.data.values || [];
+      gridData = res.data.values || [];
     } catch (e) {
       return { ok: false, rows: [], error: e?.message || "FETCH_FAIL", rawRowCount: 0 };
     }
-    if (data.length < 4) return { ok: true, rows: [], rawRowCount: data.length };
+    if (gridData.length < 4) return { ok: true, rows: [], rawRowCount: gridData.length };
 
-    const roomNames = (data[0] || []).slice(2, 13);
-    const rows = [];
+    const roomNames = (gridData[0] || []).slice(2, 13);
+    const reportRows = [];
     const seenOvernight = new Set();
 
-    for (let r = 1; r <= 31 && r < data.length; r++) {
-      const row = data[r] || [];
+    for (let r = 1; r <= 31 && r < gridData.length; r++) {
+      const row = gridData[r] || [];
       const dayOfMonth = r;
       const dateIso = `${year}-${String(month).padStart(2, "0")}-${String(dayOfMonth).padStart(2, "0")}`;
       for (let col = 0; col < roomNames.length; col++) {
         const roomName = String(roomNames[col] || "").trim();
-        const roomId = roomName ? (roomsByName.get(roomName.toLowerCase()) ?? db.prepare("SELECT id FROM rooms WHERE LOWER(TRIM(name))=?").get(roomName.toLowerCase())?.id) : null;
+        const roomId = resolveRoomIdFromSheetCell(roomName);
         if (!roomId) continue;
         const cell = String(row[col + 2] || "").trim();
         const lines = cell.split(/\n/).map((l) => l.trim()).filter(Boolean);
         for (const line of lines) {
-        const parsed = parseReportCell(line, year);
-        if (!parsed) continue;
-        if (parsed.booking_type === "hourly") {
-          rows.push({
+          const parsed = parseReportCell(line, year);
+          if (!parsed) continue;
+          if (parsed.booking_type === "hourly") {
+            reportRows.push({
             room_id: roomId,
             full_name: parsed.fullName,
             check_in: dateIso,
             check_out: dateIso,
             check_in_time: parsed.check_in_time,
             check_out_time: parsed.check_out_time,
-            status: "confirmed",
+            status: parsed.status || "confirmed",
             booking_type: "hourly"
           });
         } else {
           const key = `${roomId}-${parsed.check_in}-${parsed.check_out}-${parsed.fullName}`;
           if (seenOvernight.has(key)) continue;
           seenOvernight.add(key);
-          rows.push({
+          reportRows.push({
             room_id: roomId,
             full_name: parsed.fullName,
             check_in: parsed.check_in,
             check_out: parsed.check_out,
             check_in_time: null,
             check_out_time: null,
-            status: "confirmed",
+            status: parsed.status || "confirmed",
             booking_type: "overnight"
           });
         }
       }
     }
-    console.log("[GoogleSheets] fetch Report OK: parsed", rows.length, "bookings from grid");
-    return { ok: true, rows, rawRowCount: data.length };
+  }
+    console.log("[GoogleSheets] fetch Report OK: parsed", reportRows.length, "bookings from grid");
+    return { ok: true, rows: reportRows, rawRowCount: gridData.length, source: "report" };
   }
 
   const range = listRange;
-  let data;
+  let listData;
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range,
       dateTimeRenderOption: "FORMATTED_STRING"
     });
-    data = res.data.values || [];
+    listData = res.data.values || [];
   } catch (e) {
     return { ok: false, rows: [], error: e?.message || "FETCH_FAIL", rawRowCount: 0 };
   }
 
-  const rawRowCount = data.length;
-  const rows = [];
-  for (let i = 0; i < data.length; i++) {
-    const row = data[i];
+  const rawRowCount = listData.length;
+  const listRows = [];
+  for (let i = 0; i < listData.length; i++) {
+    const row = listData[i];
     const a = String(row[0] || "").trim();
     const bRaw = String(row[1] || "").trim();
     const cRaw = String(row[2] || "").trim();
@@ -242,7 +265,7 @@ export async function fetchGoogleSheetBookings() {
     const fullName = nameRaw || "(Google Sheet)";
 
     if (isHourly) {
-      rows.push({
+      listRows.push({
         room_id: roomId,
         full_name: fullName,
         check_in: b,
@@ -255,7 +278,7 @@ export async function fetchGoogleSheetBookings() {
     } else {
       const c = parseSheetDate(cRaw);
       if (!c || b >= c) continue;
-      rows.push({
+      listRows.push({
         room_id: roomId,
         full_name: fullName,
         check_in: b,
@@ -267,14 +290,14 @@ export async function fetchGoogleSheetBookings() {
       });
     }
   }
-  console.log("[GoogleSheets] fetch List OK: range=", range, "| parsed=", rows.length);
-  return { ok: true, rows, rawRowCount };
+  console.log("[GoogleSheets] fetch List OK: range=", range, "| parsed=", listRows.length);
+  return { ok: true, rows: listRows, rawRowCount, source: "list" };
 }
 
 export function syncGoogleSheetToBookings() {
   cleanupExpiredSepay();
-  return fetchGoogleSheetBookings().then(({ ok, rows, error, rawRowCount = 0 }) => {
-    if (!ok) return { synced: 0, error, fetched: 0, rawRowCount };
+  return fetchGoogleSheetBookings().then(({ ok, rows, error, rawRowCount = 0, source = "list" }) => {
+    if (!ok) return { synced: 0, error, fetched: 0, rawRowCount, source };
 
     if (hasColumn(db, "bookings", "source")) {
       db.prepare("DELETE FROM bookings WHERE source=?").run("google_sheet");
@@ -290,6 +313,7 @@ export function syncGoogleSheetToBookings() {
     const setTimes = hasColumn(db, "bookings", "check_in_time") ? db.prepare("UPDATE bookings SET check_in_time=?, check_out_time=? WHERE id=?") : null;
 
     const valueFor = (col, r, lookup) => {
+      const isConfirmed = (r.status || "").toLowerCase() === "confirmed";
       const v = {
         room_id: r.room_id,
         user_id: null,
@@ -300,9 +324,9 @@ export function syncGoogleSheetToBookings() {
         check_out: r.check_out,
         guests: 1,
         note: "",
-        status: r.status || "confirmed",
+        status: r.status || "pending",
         payment_method: "sepay",
-        payment_status: "paid",
+        payment_status: isConfirmed ? "paid" : "unpaid",
         total_amount: 0,
         paid_amount: 0,
         lookup_code: lookup
@@ -310,10 +334,14 @@ export function syncGoogleSheetToBookings() {
       return v[col];
     };
 
+    const hasSource = hasColumn(db, "bookings", "source");
+    const existingWebStmt = hasSource ? db.prepare("SELECT 1 FROM bookings WHERE room_id=? AND check_in=? AND TRIM(full_name)=? AND source='web'") : null;
+
     let synced = 0;
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (!r.room_id) continue;
+      if (existingWebStmt && existingWebStmt.get(r.room_id, r.check_in, String(r.full_name || "").trim())) continue;
       const lookup = "GS-" + r.room_id + "-" + r.check_in + (r.check_in_time ? "-" + r.check_in_time : "") + "-" + i;
       try {
         const vals = insertCols.map((c) => valueFor(c, r, lookup));
@@ -330,15 +358,15 @@ export function syncGoogleSheetToBookings() {
       }
     }
     console.log("[GoogleSheets] Sheet→Web: inserted", synced, "bookings");
-    return { synced, error: null, fetched: rows.length, rawRowCount };
+    return { synced, error: null, fetched: rows.length, rawRowCount, source };
   });
 }
 
-/** Ghi bảng lịch: A4:A34=ngày, B4:B34=thứ, C3:M3=tên phòng, C4:M34=nội dung. Chỉ đơn confirmed + đã thanh toán. */
+/** Ghi bảng lịch: A4:A34=ngày, B4:B34=thứ, C3:M3=tên phòng, C4:M34=nội dung. Gồm đơn confirmed+đã TT và đơn pending; đơn hết hạn (đã hủy) không ghi → xóa khỏi sheet. */
 export async function pushBookingsToGoogleSheet() {
   cleanupExpiredSepay();
   const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-  const reportRange = process.env.GOOGLE_SHEETS_REPORT_RANGE || "";
+  const reportRange = (process.env.GOOGLE_SHEETS_REPORT_RANGE || "").trim();
   const webRange = process.env.GOOGLE_SHEETS_WEB_RANGE || "Web!A2:G500";
   const credPath = process.env.GOOGLE_SHEETS_CREDENTIALS_PATH;
   if (!spreadsheetId || !credPath) return { ok: false, error: "MISSING_CONFIG" };
@@ -364,12 +392,37 @@ export async function pushBookingsToGoogleSheet() {
   const roomIdToIndex = new Map(rooms.slice(0, roomColCount).map((r, i) => [r.id, i]));
 
   const bookings = db.prepare(`
-    SELECT b.room_id, b.full_name, b.check_in, b.check_out, b.booking_type, b.check_in_time, b.check_out_time
+    SELECT b.room_id, b.full_name, b.check_in, b.check_out, b.booking_type, b.check_in_time, b.check_out_time,
+           b.status, b.payment_status, b.paid_amount, b.total_amount
     FROM bookings b
-    WHERE b.status = 'confirmed'
-    AND (b.payment_status = 'paid' OR b.paid_amount >= b.total_amount)
+    WHERE (b.status = 'confirmed' AND (b.payment_status = 'paid' OR b.paid_amount >= b.total_amount))
+       OR b.status = 'pending'
     ORDER BY b.check_in, b.room_id
   `).all();
+
+  const statusStr = (b) => String(b.status || "").toLowerCase();
+  const isPaidBooking = (b) =>
+    statusStr(b) === "confirmed" &&
+    (String(b.payment_status || "").toLowerCase() === "paid" ||
+      (b.paid_amount != null && b.total_amount != null && Number(b.paid_amount) >= Number(b.total_amount)));
+
+  const overnightKey = (b) => `${b.room_id}|${String(b.full_name || "").trim()}|${b.check_in}`;
+  const overnightMap = new Map();
+  const hourlyList = [];
+  for (const b of bookings) {
+    const isOvernight = String(b.booking_type || "").toLowerCase() !== "hourly";
+    if (!isOvernight) {
+      hourlyList.push(b);
+      continue;
+    }
+    const key = overnightKey(b);
+    if (!overnightMap.has(key) || (b.check_out || "") > (overnightMap.get(key).check_out || "")) {
+      overnightMap.set(key, b);
+    }
+  }
+  const dedupedBookings = [...hourlyList, ...overnightMap.values()].sort(
+    (a, b) => (a.check_in || "").localeCompare(b.check_in || "") || (a.room_id - b.room_id)
+  );
 
   const grid = [];
   for (let day = 1; day <= 31; day++) {
@@ -380,22 +433,24 @@ export async function pushBookingsToGoogleSheet() {
     grid.push(row);
   }
 
-  for (const b of bookings) {
+  for (const b of dedupedBookings) {
     const colIndex = roomIdToIndex.get(b.room_id);
     if (colIndex == null) continue;
     const ci = b.check_in || "";
     const co = b.check_out || "";
     const isHourly = String(b.booking_type || "").toLowerCase() === "hourly";
     const name = String(b.full_name || "").trim() || "Khách";
+    const statusLabel = statusStr(b) === "pending" ? "Chờ TT" : (isPaidBooking(b) ? "Đã TT" : "Chờ TT");
 
     if (isHourly && b.check_in_time && b.check_out_time) {
       const [y, m, d] = ci.split("-");
       const dayNum = parseInt(d, 10);
       if (dayNum >= 1 && dayNum <= 31) {
-        const cellText = `${name} | Theo giờ ${b.check_in_time}-${b.check_out_time} | Đã TT`;
+        const cellText = `${name} | Theo giờ ${b.check_in_time}-${b.check_out_time} | ${statusLabel}`;
         const rowIndex = dayNum - 1;
-        if (grid[rowIndex][colIndex + 2] === "") grid[rowIndex][colIndex + 2] = cellText;
-        else grid[rowIndex][colIndex + 2] += "\n" + cellText;
+        const cur = grid[rowIndex][colIndex + 2];
+        if (cur === "") grid[rowIndex][colIndex + 2] = cellText;
+        else if (!cur.includes(cellText)) grid[rowIndex][colIndex + 2] += "\n" + cellText;
       }
     } else {
       const ciDate = parseSheetDate(ci);
@@ -410,12 +465,13 @@ export async function pushBookingsToGoogleSheet() {
       const coDay = coDayExclusive.getDate();
       const ciFmt = (() => { const [y, m, d] = (ci || "").split("-"); return d && m ? `${d}/${m}` : ci; })();
       const coFmt = (() => { const [y, m, d] = (co || "").split("-"); return d && m ? `${d}/${m}` : co; })();
-      const cellText = `${name} | Qua đêm ${ciFmt}-${coFmt} | Đã TT`;
+      const cellText = `${name} | Qua đêm ${ciFmt}-${coFmt} | ${statusLabel}`;
       for (let day = ciDay; day <= coDay; day++) {
         if (day < 1 || day > 31) continue;
         const rowIndex = day - 1;
-        if (grid[rowIndex][colIndex + 2] === "") grid[rowIndex][colIndex + 2] = cellText;
-        else grid[rowIndex][colIndex + 2] += "\n" + cellText;
+        const cur = grid[rowIndex][colIndex + 2];
+        if (cur === "") grid[rowIndex][colIndex + 2] = cellText;
+        else if (!cur.includes(cellText)) grid[rowIndex][colIndex + 2] += "\n" + cellText;
       }
     }
   }
@@ -423,6 +479,7 @@ export async function pushBookingsToGoogleSheet() {
   if (reportRange) {
     const match = reportRange.match(/^([^!]+)!/);
     const sheetName = match ? match[1] : "Sheet1";
+    console.log("[GoogleSheets] push mode: REPORT →", sheetName, "| A4:M34 (bảng lịch)");
     try {
       await sheets.spreadsheets.values.clear({
         spreadsheetId,
@@ -456,6 +513,7 @@ export async function pushBookingsToGoogleSheet() {
     }
   }
 
+  console.log("[GoogleSheets] push mode: LIST →", webRange, "(dòng đơn A:G)");
   const rows = db.prepare(`
     SELECT b.room_id, r.name AS room_name, b.full_name, b.check_in, b.check_out, b.status, b.booking_type, b.check_in_time, b.check_out_time
     FROM bookings b JOIN rooms r ON r.id = b.room_id
